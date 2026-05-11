@@ -3,6 +3,7 @@ local Config = {}
 
 Config.GAME_WIDTH  = 1280
 Config.GAME_HEIGHT = 720
+Config.RENDER_SCALE = 2
 
 -- Layout — sidebar HUD on left (200px), play area right of it
 Config.SIDEBAR_WIDTH    = 195

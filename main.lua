@@ -37,6 +37,23 @@ local game = {
 
 local sm
 
+local function loadImage(path)
+    local ok, image = pcall(love.graphics.newImage, path)
+    if not ok then return nil end
+    image:setFilter("linear", "linear")
+    return image
+end
+
+local function getCanvasTransform()
+    local winW, winH = love.graphics.getDimensions()
+    local scaleX = winW / Config.GAME_WIDTH
+    local scaleY = winH / Config.GAME_HEIGHT
+    local scale  = math.min(scaleX, scaleY)
+    local ox = math.floor((winW - Config.GAME_WIDTH * scale) / 2)
+    local oy = math.floor((winH - Config.GAME_HEIGHT * scale) / 2)
+    return winW, winH, scale, ox, oy
+end
+
 function love.load()
     love.window.setTitle("Brainrot Arcade")
 
@@ -45,12 +62,27 @@ function love.load()
         love.window.setFullscreen(true, "desktop")
     end
 
-    game.canvas = love.graphics.newCanvas(Config.GAME_WIDTH, Config.GAME_HEIGHT)
+    local renderScale = Config.RENDER_SCALE or 1
+    game.canvas = love.graphics.newCanvas(
+        Config.GAME_WIDTH * renderScale,
+        Config.GAME_HEIGHT * renderScale
+    )
     game.canvas:setFilter("linear", "linear")
 
-    game.fonts.main  = love.graphics.newFont(16)
-    game.fonts.small = love.graphics.newFont(11)
-    game.fonts.large = love.graphics.newFont(26)
+    local function tryFont(size)
+        local ok, f = pcall(love.graphics.newFont, "assets/font.ttf", math.floor(size * 1.5))
+        if ok then return f else return love.graphics.newFont(size) end
+    end
+
+    game.fonts.main  = tryFont(16)
+    game.fonts.small = tryFont(12)
+    game.fonts.large = tryFont(26)
+    game.fonts.menuTiny   = tryFont(12)
+    game.fonts.menuSmall  = tryFont(16)
+    game.fonts.menuLarge  = tryFont(22)
+    game.fonts.menuButton = tryFont(23)
+    game.fonts.menuArcade = tryFont(28)
+    game.fonts.menuIcon   = tryFont(20)
 
     game.sounds.bonk  = love.audio.newSource("sounds/bonk.mp3", "static")
     game.sounds.punch = love.audio.newSource("sounds/punch.mp3", "static")
@@ -75,6 +107,21 @@ function love.load()
     love.graphics.setCanvas()
     game.images.paddleRaw    = imgPaddle
     game.images.paddleScaled = scaledCanvas
+
+    game.images.background      = loadImage("assets/background image.png")
+    game.images.homeReference   = loadImage("assets/home screen.png")
+    game.images.bloodOverlay    = loadImage("assets/blood splatter overlay.png")
+    game.images.scratchedMetal  = loadImage("assets/scratched metal overlay.png")
+    game.images.brainLogo       = loadImage("assets/brain logo.png")
+    game.images.brainrotLogo    = loadImage("assets/brainrot.png")
+    game.images.breakerLogo     = loadImage("assets/breaker.png")
+    game.images.character       = loadImage("assets/character 1.png")
+    game.images.frame           = loadImage("assets/frame.png")
+    game.images.glowingOverlays = loadImage("assets/glowing overlays.png")
+    game.images.noThoughts      = loadImage("assets/no thoughts empty head.png")
+    game.images.iPutThePro      = loadImage("assets/i put the pro.png")
+    game.images.cornerTop       = loadImage("assets/metallic corner bracket top.png")
+    game.images.cornerBottom    = loadImage("assets/metallic corner bracket bottom.png")
 
     -- White pixel for particles
     local whiteCanvas = love.graphics.newCanvas(4, 4)
@@ -118,6 +165,26 @@ function love.keypressed(key)
     sm:keypressed(key)
 end
 
+function love.mousepressed(x, y, button)
+    if not sm or not sm.mousepressed then return end
+    local _, _, scale, ox, oy = getCanvasTransform()
+    local gx = (x - ox) / scale
+    local gy = (y - oy) / scale
+    if gx >= 0 and gx <= Config.GAME_WIDTH and gy >= 0 and gy <= Config.GAME_HEIGHT then
+        sm:mousepressed(gx, gy, button)
+    end
+end
+
+function love.mousemoved(x, y, dx, dy, istouch)
+    if not sm or not sm.mousemoved then return end
+    local _, _, scale, ox, oy = getCanvasTransform()
+    local gx = (x - ox) / scale
+    local gy = (y - oy) / scale
+    local gdx = dx / scale
+    local gdy = dy / scale
+    sm:mousemoved(gx, gy, gdx, gdy, istouch)
+end
+
 function love.joystickpressed(joystick, button)
     local key = "joystick" .. joystick:getID() .. "button" .. button
     if button == 0 then key = "space"  -- A button
@@ -131,30 +198,28 @@ end
 function love.resize(w, h) end
 
 function love.draw()
-    local winW, winH = love.graphics.getDimensions()
     local settings = Save.getSettings()
+    local winW, winH, scale, ox, oy = getCanvasTransform()
+    local renderScale = Config.RENDER_SCALE or 1
+    local sharpUiState = sm and (sm.name == "menu" or sm.name == "settings")
 
     love.graphics.setCanvas(game.canvas)
     love.graphics.clear(Config.COLOR_BG[1], Config.COLOR_BG[2], Config.COLOR_BG[3], 1)
     love.graphics.origin()
+    love.graphics.scale(renderScale, renderScale)
     if settings.screenShake ~= false then
         game.camera:applyShake()
     end
     sm:draw()
     game.camera:drawFlash(Config.GAME_WIDTH, Config.GAME_HEIGHT)
     love.graphics.setCanvas()
-
-    local scaleX = winW / Config.GAME_WIDTH
-    local scaleY = winH / Config.GAME_HEIGHT
-    local scale  = math.min(scaleX, scaleY)
-    local ox = math.floor((winW - Config.GAME_WIDTH * scale) / 2)
-    local oy = math.floor((winH - Config.GAME_HEIGHT * scale) / 2)
+    love.graphics.origin()
 
     love.graphics.setColor(0, 0, 0)
     love.graphics.rectangle("fill", 0, 0, winW, winH)
 
     -- Apply CRT shader if enabled
-    if settings.crtEffect and game.shader then
+    if settings.crtEffect and not sharpUiState and game.shader then
         game.shader:setBrainrot(game.brainrotLevel)
         game.shader:sendResolution(winW, winH)
         game.shader:sendTime(love.timer.getTime())
@@ -162,26 +227,28 @@ function love.draw()
     end
 
     love.graphics.setColor(1, 1, 1)
-    love.graphics.draw(game.canvas, ox, oy, 0, scale, scale)
+    love.graphics.draw(game.canvas, ox, oy, 0, scale / renderScale, scale / renderScale)
 
-    if settings.crtEffect and game.shader then
+    if settings.crtEffect and not sharpUiState and game.shader then
         game.shader:reset()
     end
 
-    drawScanlines(winW, winH)
+    if settings.crtEffect and not sharpUiState then
+        drawScanlines(winW, winH)
+    end
 end
 
 function drawScanlines(w, h)
-    love.graphics.setColor(0, 0, 0, 0.05)
-    for y = game.scanlineOffset, h, 4 do
-        love.graphics.rectangle("fill", 0, y, w, 2)
+    love.graphics.setColor(0, 0, 0, 0.018)
+    for y = game.scanlineOffset, h, 6 do
+        love.graphics.rectangle("fill", 0, y, w, 1)
     end
     if game.brainrotLevel > 0 then
-        love.graphics.setColor(0.6, 0, 0, 0.01 * game.brainrotLevel)
+        love.graphics.setColor(0.6, 0, 0, 0.004 * game.brainrotLevel)
         love.graphics.rectangle("fill", 0, 0, w, h)
     end
     -- CRT border vignette
-    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.setColor(0, 0, 0, 0.24)
     love.graphics.rectangle("fill", 0, 0, 3, h)
     love.graphics.rectangle("fill", w - 3, 0, 3, h)
     love.graphics.rectangle("fill", 0, 0, w, 3)

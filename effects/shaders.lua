@@ -1,56 +1,38 @@
--- CRT Shader effects — barrel distortion, scanlines, chromatic aberration, vignette
+-- CRT Shader effects — subtle scanlines, light chromatic aberration, vignette
 local Shaders = {}
 
--- Fragment shader with full CRT effect
+-- Fragment shader with a restrained CRT effect.
 Shaders.fragmentCode = [[
     extern float time;
     extern float brainrot;
     extern vec2 resolution;
 
-    // Curve the screen (barrel distortion)
-    vec2 curve(vec2 uv) {
-        uv = uv * 2.0 - 1.0;
-        vec2 offset = abs(uv.yx) / vec2(6.0, 4.0);
-        uv = uv + uv * offset * offset;
-        uv = uv * 0.5 + 0.5;
-        return uv;
-    }
-
     vec4 effect(vec4 vcolor, Image tex, vec2 texture_coords, vec2 screen_coords) {
-        vec2 uv = screen_coords / resolution;
+        vec2 uv = texture_coords;
 
-        // Apply barrel distortion
-        vec2 curved = curve(uv);
-
-        // Check bounds after curvature
-        if (curved.x < 0.0 || curved.x > 1.0 || curved.y < 0.0 || curved.y > 1.0) {
-            return vec4(0.0, 0.0, 0.0, 1.0);
-        }
-
-        // Chromatic aberration — increases with brainrot
-        float aberration = 0.002 + brainrot * 0.001;
+        // Very light chromatic aberration. Keep this low so text stays sharp.
+        float aberration = 0.00035 + brainrot * 0.00012;
         vec4 color;
-        color.r = Texel(tex, curved + vec2(aberration, 0.0)).r;
-        color.g = Texel(tex, curved).g;
-        color.b = Texel(tex, curved - vec2(aberration, 0.0)).b;
+        color.r = Texel(tex, uv + vec2(aberration, 0.0)).r;
+        color.g = Texel(tex, uv).g;
+        color.b = Texel(tex, uv - vec2(aberration, 0.0)).b;
         color.a = 1.0;
 
-        // Scanlines
-        float scanline = sin(gl_FragCoord.y * 2.0) * 0.04;
-        color.rgb -= scanline;
+        // Fine scanline texture, not a full-screen darkening pass.
+        float scanline = (sin(uv.y * resolution.y * 1.25) * 0.5 + 0.5) * 0.018;
+        color.rgb *= 1.0 - scanline;
 
-        // Vignette
+        // Soft vignette that preserves the center and avoids heavy corner warping.
         vec2 vig = uv * (1.0 - uv.xy);
-        float vigAmount = vig.x * vig.y * 15.0;
-        vigAmount = pow(vigAmount, 0.25);
+        float vigAmount = clamp(pow(vig.x * vig.y * 16.0, 0.16), 0.72, 1.0);
         color.rgb *= vigAmount;
 
-        // Phosphor glow (subtle green tint)
-        color.rgb += vec3(0.0, 0.02, 0.0);
+        // Minimal phosphor tint.
+        color.rgb += vec3(0.0, 0.004, 0.0);
 
         // Brainrot: add RGB shift/glitch at high levels
         if (brainrot > 6.0) {
-            float glitch = sin(time * 10.0 + uv.y * 50.0) * 0.01 * (brainrot - 6.0);
+            float glitch = sin(time * 10.0 + uv.y * 50.0) * 0.003 * (brainrot - 6.0);
             color.r += glitch;
             color.b -= glitch;
         }
@@ -58,7 +40,7 @@ Shaders.fragmentCode = [[
         // Brainrot: noise at endgame
         if (brainrot > 8.0) {
             float noise = fract(sin(dot(uv, vec2(12.9898, 78.233)) + time) * 43758.5453);
-            color.rgb += (noise - 0.5) * 0.1 * (brainrot - 8.0) / 2.0;
+            color.rgb += (noise - 0.5) * 0.035 * (brainrot - 8.0) / 2.0;
         }
 
         return color * vcolor;

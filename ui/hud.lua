@@ -6,11 +6,28 @@ local Config = require("config")
 local HUD = {}
 
 -- Draw a dark panel with bronze border
-local function drawPanel(x, y, w, h, borderColor)
+local function drawImageFit(img, x, y, w, h, alpha)
+    if not img then return end
+    love.graphics.setColor(1, 1, 1, alpha or 1)
+    love.graphics.draw(img, x, y, 0, w / img:getWidth(), h / img:getHeight())
+end
+
+local function drawPanel(game, x, y, w, h, borderColor)
     love.graphics.setColor(Config.COLOR_PANEL)
     love.graphics.rectangle("fill", x, y, w, h, 4, 4)
     love.graphics.setColor(borderColor or Config.COLOR_PANEL_BORDER)
     love.graphics.rectangle("line", x, y, w, h, 4, 4)
+
+    local frame = game.images and game.images.frame
+    if frame then
+        drawImageFit(frame, x - 12, y - 15, w + 24, h + 30, 0.28)
+    end
+    local topC = game.images and game.images.cornerTop
+    local botC = game.images and game.images.cornerBottom
+    if topC and botC and w >= 90 and h >= 48 then
+        drawImageFit(topC, x + w - 40, y - 8, 40, 30, 0.34)
+        drawImageFit(botC, x - 7, y + h - 25, 30, 25, 0.30)
+    end
 end
 
 function HUD.draw(game, fonts)
@@ -39,7 +56,7 @@ function HUD.draw(game, fonts)
     love.graphics.rectangle("fill", 12, 62, SW - 24, 1)
 
     -- ═══ STATS PANEL ═══
-    drawPanel(8, 70, SW - 16, 115)
+    drawPanel(game, 8, 70, SW - 16, 115)
 
     love.graphics.setFont(fonts.small)
     love.graphics.setColor(Config.COLOR_MUTED)
@@ -91,7 +108,7 @@ function HUD.draw(game, fonts)
 
     -- ═══ POWER UPS PANEL ═══
     local mods = game.modifiers:getUnique()
-    drawPanel(8, 256, SW - 16, math.max(40, #mods * 22 + 30))
+    drawPanel(game, 8, 256, SW - 16, math.max(40, #mods * 22 + 30))
 
     love.graphics.setFont(fonts.small)
     love.graphics.setColor(Config.COLOR_GOLD)
@@ -125,7 +142,7 @@ function HUD.draw(game, fonts)
     if game.isEndless then stageText = "∞ " .. stageText end
     local stw = fonts.main:getWidth(stageText) + 50
 
-    drawPanel(playCenter - stw/2, 8, stw, 30, {Config.COLOR_ACCENT[1], Config.COLOR_ACCENT[2], Config.COLOR_ACCENT[3], 0.4})
+    drawPanel(game, playCenter - stw/2, 8, stw, 30, {Config.COLOR_ACCENT[1], Config.COLOR_ACCENT[2], Config.COLOR_ACCENT[3], 0.4})
     love.graphics.setColor(Config.COLOR_ACCENT)
     love.graphics.printf(stageText, SW, 13, W - SW, "center")
 
@@ -134,7 +151,7 @@ function HUD.draw(game, fonts)
         local modW, modH = 240, 55
         local mx = W - modW - 10
         local my = H - modH - 10
-        drawPanel(mx, my, modW, modH)
+        drawPanel(game, mx, my, modW, modH)
 
         love.graphics.setFont(fonts.small)
         love.graphics.setColor(Config.COLOR_GOLD)

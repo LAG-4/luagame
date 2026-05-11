@@ -61,4 +61,12 @@ function GameOver:keypressed(key)
     elseif key == "m" then self.sm:switch("runsummary", self.game, self.sm) end
 end
 
+function GameOver:mousepressed(x, y, button)
+    if button == 1 then
+        self:keypressed("r")
+    elseif button == 2 then
+        self:keypressed("m")
+    end
+end
+
 return GameOver

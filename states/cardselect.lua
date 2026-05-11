@@ -120,4 +120,28 @@ function CardSelect:keypressed(key)
     end
 end
 
+function CardSelect:mousemoved(x, y, dx, dy)
+    local W = Config.GAME_WIDTH
+    local cardW, cardH = 280, 200
+    local gap = 30
+    local totalW = 3 * cardW + 2 * gap
+    local startX = (W - totalW) / 2
+    local cardY = 180
+
+    self.selected = nil
+    for i, card in ipairs(self.cards) do
+        local cx = startX + (i - 1) * (cardW + gap)
+        if x >= cx and x <= cx + cardW and y >= cardY and y <= cardY + cardH then
+            self.selected = i
+            break
+        end
+    end
+end
+
+function CardSelect:mousepressed(x, y, button)
+    if button == 1 and self.selected then
+        self:keypressed(tostring(self.selected))
+    end
+end
+
 return CardSelect

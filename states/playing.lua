@@ -246,6 +246,26 @@ function Playing:draw()
     love.graphics.setColor(0, 0, 0, 0.35)
     love.graphics.rectangle("fill", Config.PLAY_AREA_LEFT, Config.TOP_BAR_HEIGHT, W - Config.PLAY_AREA_LEFT, H - Config.TOP_BAR_HEIGHT)
 
+    local bloodOverlay = game.images.bloodOverlay
+    if bloodOverlay then
+        love.graphics.setColor(0.65, 0.04, 0.025, 0.11 + math.min(game.brainrotLevel, 8) * 0.012)
+        love.graphics.draw(
+            bloodOverlay,
+            W - 500, Config.TOP_BAR_HEIGHT - 95,
+            -0.05,
+            560 / bloodOverlay:getWidth(),
+            380 / bloodOverlay:getHeight()
+        )
+        love.graphics.setColor(0.55, 0.025, 0.02, 0.06 + math.min(game.brainrotLevel, 8) * 0.008)
+        love.graphics.draw(
+            bloodOverlay,
+            Config.PLAY_AREA_LEFT + 35, H - 225,
+            0.12,
+            430 / bloodOverlay:getWidth(),
+            280 / bloodOverlay:getHeight()
+        )
+    end
+
     -- Atmospheric background text (faded watermarks in play area)
     if self.bgTexts then
         love.graphics.setFont(game.fonts.large)
@@ -321,6 +341,22 @@ function Playing:keypressed(key)
         end
     elseif key == "escape" then
         self.sm:push("pause", game, self.sm)
+    end
+end
+
+function Playing:mousemoved(x, y, dx, dy)
+    local game = self.game
+    if game and game.paddle then
+        game.paddle.x = math.max(Config.PLAY_AREA_LEFT + game.paddle.width/2,
+                   math.min(Config.GAME_WIDTH - game.paddle.width/2, x))
+    end
+end
+
+function Playing:mousepressed(x, y, button)
+    if button == 1 then
+        for _, ball in ipairs(self.game.balls) do
+            if not ball.active then Ball.launch(ball); break end
+        end
     end
 end
 
