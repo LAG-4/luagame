@@ -7,7 +7,10 @@ local Camera       = require("effects.camera")
 local StateMachine = require("states.statemachine")
 local Modifiers    = require("systems.modifiers")
 local Popup        = require("ui.popup")
+local Particles   = require("effects.particles")
+local Shaders      = require("effects.shaders")
 local Audio        = require("systems.audio")
+local Save         = require("lib.save")
 
 local game = {
     score          = 0,
@@ -22,6 +25,8 @@ local game = {
     timers         = Timer.new(),
     camera         = Camera.new(),
     popups         = Popup.new(),
+    particles      = Particles.new(),
+    shader         = nil,
     audio          = nil,
     scanlineOffset = 0,
     fonts          = {},
@@ -47,8 +52,9 @@ function love.load()
     game.sounds.fah   = love.audio.newSource("sounds/fah.mp3", "static")
     game.sounds.fah:setVolume(0.5)
 
-    -- Phase 4: Audio manager
-    game.audio = Audio.new(game.sounds)
+    -- Phase 4: Audio manager with BGM
+    game.audio = Audio.new(game.sounds, "assets/Virus Arcade Panic (1).mp3")
+    game.audio:playBgm()
 
     -- Paddle image
     local imgPaddle = love.graphics.newImage("assets/sahur.png")
@@ -63,13 +69,31 @@ function love.load()
     game.images.paddleRaw    = imgPaddle
     game.images.paddleScaled = scaledCanvas
 
+    -- White pixel for particles
+    local whiteCanvas = love.graphics.newCanvas(4, 4)
+    love.graphics.setCanvas(whiteCanvas)
+    love.graphics.clear(1, 1, 1, 1)
+    love.graphics.setCanvas()
+    game.images.white = whiteCanvas
+
+    -- CRT Shader
+    game.shader = Shaders.new()
+
+    -- Load settings
+    local settings = Save.getSettings()
+    if settings.crtEffect ~= false then
+        -- Shader enabled by default
+    end
+
     sm = StateMachine.new({
-        menu       = require("states.menu"),
-        playing    = require("states.playing"),
-        cardselect = require("states.cardselect"),
-        gameover   = require("states.gameover"),
-        victory    = require("states.victory"),
-        pause      = require("states.pause"),
+        menu        = require("states.menu"),
+        playing     = require("states.playing"),
+        cardselect  = require("states.cardselect"),
+        gameover    = require("states.gameover"),
+        victory     = require("states.victory"),
+        pause       = require("states.pause"),
+        settings    = require("states.settings"),
+        runsummary  = require("states.runsummary"),
     })
 
     sm:switch("menu", game, sm)
@@ -79,6 +103,7 @@ function love.update(dt)
     game.scanlineOffset = (game.scanlineOffset + dt * 50) % 4
     game.camera:update(dt, Config.SHAKE_DECAY_SPEED)
     game.timers:update(dt)
+    game.particles:update(dt)
     sm:update(dt)
 end
 
@@ -90,10 +115,21 @@ function love.keypressed(key)
     sm:keypressed(key)
 end
 
+function love.joystickpressed(joystick, button)
+    local key = "joystick" .. joystick:getID() .. "button" .. button
+    if button == 0 then key = "space"  -- A button
+    elseif button == 1 then key = "escape"  -- B button
+    elseif button == 2 then key = nil  -- X button
+    elseif button == 3 then key = nil  -- Y button
+    end
+    if key then sm:keypressed(key) end
+end
+
 function love.resize(w, h) end
 
 function love.draw()
     local winW, winH = love.graphics.getDimensions()
+    local settings = Save.getSettings()
 
     love.graphics.setCanvas(game.canvas)
     love.graphics.clear(Config.COLOR_BG[1], Config.COLOR_BG[2], Config.COLOR_BG[3], 1)
@@ -111,8 +147,21 @@ function love.draw()
 
     love.graphics.setColor(0, 0, 0)
     love.graphics.rectangle("fill", 0, 0, winW, winH)
+
+    -- Apply CRT shader if enabled
+    if settings.crtEffect and game.shader then
+        game.shader:setBrainrot(game.brainrotLevel)
+        game.shader:sendResolution(Config.GAME_WIDTH, Config.GAME_HEIGHT)
+        game.shader:sendTime(love.timer.getTime())
+        game.shader:apply()
+    end
+
     love.graphics.setColor(1, 1, 1)
     love.graphics.draw(game.canvas, ox, oy, 0, scale, scale)
+
+    if settings.crtEffect and game.shader then
+        game.shader:reset()
+    end
 
     drawScanlines(winW, winH)
 end

@@ -20,15 +20,30 @@ function Paddle.reset(paddle)
 end
 
 function Paddle.update(paddle, dt)
-    if love.keyboard.isDown("right") or love.keyboard.isDown("d") then
-        paddle.x = paddle.x + paddle.speed * dt
+    local left = love.keyboard.isDown("left", "a")
+    local right = love.keyboard.isDown("right", "d")
+
+    -- Gamepad support
+    local joyX = 0
+    for i = 1, love.joystick.getJoystickCount() do
+        local joystick = love.joystick.getJoystick(i)
+        if joystick then
+            local axis = joystick:getAxis(1)  -- Left stick X
+            if math.abs(axis) > 0.2 then
+                joyX = axis
+                break
+            end
+        end
     end
-    if love.keyboard.isDown("left") or love.keyboard.isDown("a") then
-        paddle.x = paddle.x - paddle.speed * dt
+
+    local dx = 0
+    if left and not right then dx = -Config.PADDLE_SPEED
+    elseif right and not left then dx = Config.PADDLE_SPEED
+    elseif joyX ~= 0 then dx = joyX * Config.PADDLE_SPEED
     end
-    -- Clamp to play area (right of sidebar)
+
     paddle.x = math.max(Config.PLAY_AREA_LEFT + paddle.width/2,
-                        math.min(Config.GAME_WIDTH - paddle.width/2, paddle.x))
+               math.min(Config.GAME_WIDTH - paddle.width/2, paddle.x + dx * dt))
 end
 
 function Paddle.draw(paddle)

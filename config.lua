@@ -36,7 +36,8 @@ Config.BRICK_TOP_OFFSET   = 62
 Config.BRICK_SPAWN_CHANCE = 0.82
 Config.BRICK_BASE_ROWS    = 4
 
-Config.MAX_STAGES = 8
+Config.MAX_STAGES = 10
+Config.ENDLESS_MAX_STAGES = 999
 
 Config.SCORE_PER_BRICK        = 100
 Config.COMBO_SCORE_MULTIPLIER = 0.1
@@ -45,6 +46,9 @@ Config.CARD_BONUS_SCORE       = 500
 Config.SHAKE_DECAY_SPEED   = 12
 Config.SHAKE_PADDLE_HIT    = 3
 Config.SHAKE_BRICK_DESTROY = 5
+
+Config.COMBO_DECAY_TIME     = 5.0  -- Seconds before combo starts decaying
+Config.COMBO_DECAY_RATE     = 1.0  -- Combo decreases by this per second after decay time
 
 -- Dark gothic brick palette — worn grunge colors
 Config.BRICK_COLORS = {

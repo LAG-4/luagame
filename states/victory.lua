@@ -53,8 +53,8 @@ function Victory:draw()
 end
 
 function Victory:keypressed(key)
-    if key == "r" or key == "return" then self.sm:switch("playing", self.game, self.sm)
-    elseif key == "m" then self.sm:switch("menu", self.game, self.sm) end
+    if key == "r" or key == "return" then self.sm:switch("playing", self.game, self.sm, {endless = self.game.isEndless})
+    elseif key == "m" then self.sm:switch("runsummary", self.game, self.sm) end
 end
 
 return Victory

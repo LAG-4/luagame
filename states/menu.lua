@@ -10,6 +10,7 @@ function Menu:enter(game, sm)
     self.buttons = {
         { label = "PLAY ARCADE",   icon = "▶", action = "play" },
         { label = "ENDLESS MODE",  icon = "∞", action = "endless" },
+        { label = "SETTINGS",      icon = "⚙", action = "settings" },
         { label = "QUIT",          icon = "✕", action = "quit" },
     }
 end
@@ -50,7 +51,13 @@ function Menu:draw()
 
     love.graphics.setFont(self.game.fonts.small)
     love.graphics.setColor(Config.COLOR_MUTED)
-    love.graphics.print("v0.4 — Phase 4", 20, H - 25)
+
+    local Save = require("lib.save")
+    local hs = Save.getHighScore()
+    local hsEndless = Save.getHighScoreEndless()
+    love.graphics.print("HIGH SCORE: " .. hs, 20, 200)
+    love.graphics.print("HIGH SCORE (ENDLESS): " .. hsEndless, 20, 218)
+    love.graphics.print("v0.5 — Phase 6", 20, H - 25)
 
     -- Center: Buttons
     local btnW, btnH = 320, 48
@@ -108,14 +115,27 @@ function Menu:draw()
 end
 
 function Menu:keypressed(key)
+    -- Gamepad navigation
+    if key == "joystickup" or key == "joystick1up" then
+        key = "up"
+    elseif key == "joystickdown" or key == "joystick1down" then
+        key = "down"
+    elseif key == "joystick1button0" or key == "space" then
+        key = "return"
+    end
+
     if key == "up" or key == "w" then
         self.selected = ((self.selected - 2) % #self.buttons) + 1
     elseif key == "down" or key == "s" then
         self.selected = (self.selected % #self.buttons) + 1
     elseif key == "return" or key == "space" then
         local action = self.buttons[self.selected].action
-        if action == "play" or action == "endless" then
-            self.sm:switch("playing", self.game, self.sm)
+        if action == "play" then
+            self.sm:switch("playing", self.game, self.sm, {endless = false})
+        elseif action == "endless" then
+            self.sm:switch("playing", self.game, self.sm, {endless = true})
+        elseif action == "settings" then
+            self.sm:push("settings", self.game, self.sm)
         elseif action == "quit" then
             love.event.quit()
         end

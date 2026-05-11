@@ -3,13 +3,42 @@ local Config = require("config")
 local Audio = {}
 Audio.__index = Audio
 
-function Audio.new(sounds)
-    return setmetatable({
+function Audio.new(sounds, bgmPath)
+    local self = setmetatable({
         sounds = sounds or {},
         comboMultiplier = 1.0,
         brainrotPitch = 1.0,
-        masterVolume = 1.0,
+        masterVolume = 0.8,
+        bgm = nil,
+        bgmSource = nil,
     }, Audio)
+
+    if bgmPath then
+        self.bgm = love.audio.newSource(bgmPath, "stream")
+        if self.bgm then
+            self.bgm:setLooping(true)
+            self.bgm:setVolume(0.5)
+        end
+    end
+    return self
+end
+
+function Audio:playBgm()
+    if self.bgm then
+        self.bgm:play()
+    end
+end
+
+function Audio:stopBgm()
+    if self.bgm then
+        self.bgm:stop()
+    end
+end
+
+function Audio:setBgmVolume(vol)
+    if self.bgm then
+        self.bgm:setVolume(math.max(0, math.min(1, vol)))
+    end
 end
 
 -- Play a sound with dynamic pitch/volume based on game state

@@ -3,6 +3,7 @@ local Config    = require("config")
 local Ball      = require("entities.ball")
 local Paddle    = require("entities.paddle")
 local Brick     = require("entities.brick")
+local Layouts   = require("data.layouts")
 local Collision = require("systems.collision")
 local Modifiers = require("systems.modifiers")
 local Brainrot  = require("effects.brainrot")
@@ -10,20 +11,25 @@ local HUD       = require("ui.hud")
 
 local Playing = {}
 
-function Playing:enter(game, sm, freshStart)
+function Playing:enter(game, sm, freshStart, options)
     self.game = game
     self.sm   = sm
+    options = options or {}
+    local isEndless = options.endless or false
+
     if freshStart ~= false then
         game.score         = 0
         game.combo         = 0
+        game.comboTimer    = 0  -- Time since last combo increase
         game.stage         = 1
         game.lives         = Config.STARTING_LIVES
         game.brainrotLevel = 0
+        game.isEndless     = isEndless
         game.modifiers     = Modifiers.new()
         game.popups:clear()
         game.paddle = Paddle.new(game.images.paddleScaled)
         game.balls  = { Ball.new() }
-        game.bricks = Brick.generateGrid(game.stage)
+        game.bricks = Layouts.get(game.stage)
     end
     -- Seed atmospheric text positions
     self.bgTexts = {}
@@ -43,6 +49,17 @@ function Playing:update(dt)
 
     -- Update audio state
     game.audio:updateState(game.brainrotLevel, game.combo)
+
+    -- Combo decay
+    if game.combo > 0 then
+        game.comboTimer = (game.comboTimer or 0) + dt
+        if game.comboTimer > Config.COMBO_DECAY_TIME and game.combo > 0 then
+            game.combo = math.max(0, game.combo - Config.COMBO_DECAY_RATE * dt)
+            if game.combo == 0 then
+                game.popups:banner("COMBO LOST", Config.COLOR_MUTED, 1.0)
+            end
+        end
+    end
 
     Paddle.update(game.paddle, dt)
     Brick.updateAll(game.bricks, dt)
@@ -71,7 +88,9 @@ function Playing:update(dt)
             if Collision.ballPaddle(ball, game.paddle) then
                 local comboInc = game.modifiers:has("comboMagnet") and 2 or 1
                 game.combo = game.combo + comboInc
+                game.comboTimer = 0
                 game.camera:shake(Config.SHAKE_PADDLE_HIT)
+                game.particles:createHitSparks(ball.x, ball.y)
                 Ball.enforceMinVerticalSpeed(ball)
 
                 -- Phase 4: combo-scaled sound
@@ -113,6 +132,10 @@ function Playing:update(dt)
                             game.score = game.score + gained
                             game.camera:shake(Config.SHAKE_BRICK_DESTROY)
 
+                            -- Particle debris
+                            local brickColor = Config.BRICK_COLORS[brick.colorIdx] or {0.7, 0.3, 0.2}
+                            game.particles:createBrickDebris(brick.x + brick.width/2, brick.y + brick.height/2, brickColor)
+
                             game.popups:text(brick.x + brick.width/2, brick.y,
                                 "+" .. gained, Config.COLOR_GOLD, 0.7, 0.8)
 
@@ -144,6 +167,7 @@ function Playing:update(dt)
                 else
                     game.lives = game.lives - 1
                     game.combo = 0
+                    game.comboTimer = 0
                     if game.lives <= 0 then
                         game.audio:play("fah")
                         self.sm:switch("gameover", game, self.sm)
@@ -172,7 +196,18 @@ function Playing:update(dt)
 
     if Brick.countActive(game.bricks) == 0 then
         game.brainrotLevel = game.brainrotLevel + 1
-        if game.stage >= Config.MAX_STAGES then
+
+        if game.isEndless then
+            -- Endless: keep going forever with escalating difficulty
+            game.stage = game.stage + 1
+            game.bricks = Layouts.get(game.stage)
+            -- Make bricks harder in endless
+            for _, b in ipairs(game.bricks) do
+                b.hp = b.hp + math.floor(game.stage / 3)
+                b.maxHp = b.hp
+            end
+            game.popups:banner("STAGE " .. game.stage, Config.COLOR_GOLD, 1.5)
+        elseif game.stage >= Config.MAX_STAGES then
             self.sm:switch("victory", game, self.sm)
         else
             game.stage = game.stage + 1
@@ -214,8 +249,14 @@ function Playing:draw()
     Paddle.draw(game.paddle)
 
     for _, ball in ipairs(game.balls) do
+        if ball.active then
+            game.particles:createBallTrail(ball)
+        end
+        game.particles:drawBallTrail(ball)
         Ball.draw(ball)
     end
+
+    game.particles:draw()
 
     -- Brainrot effects
     Brainrot.drawEffects(game.brainrotLevel, love.timer.getTime())
