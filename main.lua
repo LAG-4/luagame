@@ -1,394 +1,185 @@
-GAME_WIDTH = 800
-GAME_HEIGHT = 600
+-- Brainrot Arcade — Entry point
+-- Phase 1 refactored: modular architecture, state machine, entity lists, modifier system
 
-STATE_PLAYING = 1
-STATE_CARD_SELECT = 2
-STATE_GAME_OVER = 3
-STATE_VICTORY = 4
+local Config       = require("config")
+local Timer        = require("lib.timer")
+local Camera       = require("effects.camera")
+local StateMachine = require("states.statemachine")
+local Modifiers    = require("systems.modifiers")
+local Ball         = require("entities.ball")
+local Paddle       = require("entities.paddle")
+local Brick        = require("entities.brick")
+local Collision    = require("systems.collision")
+local HUD          = require("ui.hud")
 
-local font
-local smallFont
-local paddle, ball, bricks
-local gameState, score, combo, stage
-local cards, selectedCard
-local brainrotLevel = 0
-local scanlineOffset = 0
-local shakeAmount = 0
-local soundBonk, soundPunch, soundFah
-local imgPaddle
+-- Game context — shared across all states
+local game = {
+    score          = 0,
+    combo          = 0,
+    stage          = 1,
+    brainrotLevel  = 0,
+    balls          = {},
+    paddle         = nil,
+    bricks         = {},
+    modifiers      = Modifiers.new(),
+    timers         = Timer.new(),
+    camera         = Camera.new(),
+    scanlineOffset = 0,
+    fonts          = {},
+    sounds         = {},
+    images         = {},
+}
+
+local sm  -- state machine
+
+-- PlayingContinue — same as Playing but doesn't reset the run
+local PlayingContinue = {}
+
+function PlayingContinue:enter(g, stateMachine)
+    self.game = g
+    self.sm   = stateMachine
+    -- Do NOT reset score/combo/stage/modifiers — just continue playing
+end
+
+function PlayingContinue:update(dt)
+    -- Reuse Playing's update logic
+    local playing = sm.states["playing"]
+    playing.game = self.game
+    playing.sm   = self.sm
+    playing:update(dt)
+end
+
+function PlayingContinue:draw()
+    local playing = sm.states["playing"]
+    playing.game = self.game
+    playing.sm   = self.sm
+    playing:draw()
+end
+
+function PlayingContinue:keypressed(key)
+    local playing = sm.states["playing"]
+    playing.game = self.game
+    playing.sm   = self.sm
+    playing:keypressed(key)
+end
+
+--------------------------------------------------------------------
+-- LÖVE callbacks
+--------------------------------------------------------------------
 
 function love.load()
-    love.window.setTitle("Brainrot Arcade - Wireframe Prototype")
-    love.window.setMode(GAME_WIDTH, GAME_HEIGHT)
-    font = love.graphics.newFont(16)
-    smallFont = love.graphics.newFont(12)
-    soundBonk = love.audio.newSource("sounds/bonk.mp3", "static")
-    soundPunch = love.audio.newSource("sounds/punch.mp3", "static")
-    soundFah = love.audio.newSource("sounds/fah.mp3", "static")
-    soundFah:setVolume(0.5)
-    imgPaddle = love.graphics.newImage("assets/sahur.png")
+    love.window.setTitle("Brainrot Arcade")
+    love.window.setMode(Config.GAME_WIDTH, Config.GAME_HEIGHT)
+
+    -- Fonts
+    game.fonts.main  = love.graphics.newFont(16)
+    game.fonts.small = love.graphics.newFont(12)
+
+    -- Sounds
+    game.sounds.bonk  = love.audio.newSource("sounds/bonk.mp3", "static")
+    game.sounds.punch = love.audio.newSource("sounds/punch.mp3", "static")
+    game.sounds.fah   = love.audio.newSource("sounds/fah.mp3", "static")
+    game.sounds.fah:setVolume(0.5)
+
+    -- Paddle image
+    local imgPaddle = love.graphics.newImage("assets/sahur.png")
     imgPaddle:setFilter("linear", "linear")
     local scale = 100 / imgPaddle:getWidth()
-    imgScaled = love.graphics.newCanvas(100, imgPaddle:getHeight() * scale)
-    love.graphics.setCanvas(imgScaled)
+    local scaledCanvas = love.graphics.newCanvas(100, imgPaddle:getHeight() * scale)
+    love.graphics.setCanvas(scaledCanvas)
     love.graphics.draw(imgPaddle, 0, 0, 0, scale, scale)
     love.graphics.setCanvas()
-    resetGame()
-end
+    game.images.paddleRaw    = imgPaddle
+    game.images.paddleScaled = scaledCanvas
 
-function resetGame()
-    gameState = STATE_PLAYING
-    score = 0
-    combo = 0
-    stage = 1
-    brainrotLevel = 0
-    cards = {}
-    selectedCard = nil
-    shakeAmount = 0
+    -- Build state machine
+    sm = StateMachine.new({
+        menu             = require("states.menu"),
+        playing          = require("states.playing"),
+        playing_continue = PlayingContinue,
+        cardselect       = require("states.cardselect"),
+        gameover         = require("states.gameover"),
+        victory          = require("states.victory"),
+        pause            = require("states.pause"),
+    })
 
-    paddle = {
-        x = GAME_WIDTH / 2,
-        y = GAME_HEIGHT - 40,
-        width = 100,
-        height = 15,
-        speed = 400
-    }
-    if imgScaled then
-        paddle.width = imgScaled:getWidth()
-        paddle.height = imgScaled:getHeight()
-    end
-
-    ball = {
-        x = GAME_WIDTH / 2,
-        y = GAME_HEIGHT - 60,
-        radius = 8,
-        dx = 250,
-        dy = -350,
-        active = false
-    }
-
-    generateBricks()
-end
-
-function generateBricks()
-    bricks = {}
-    local rows = 4 + stage
-    local cols = 8
-    local brickWidth = (GAME_WIDTH - 40) / cols
-    local brickHeight = 20
-
-    for row = 1, rows do
-        for col = 1, cols do
-            if math.random() > 0.2 then
-                table.insert(bricks, {
-                    x = 20 + (col - 1) * brickWidth,
-                    y = 50 + (row - 1) * brickHeight,
-                    width = brickWidth - 2,
-                    height = brickHeight - 2,
-                    hp = row,
-                    active = true
-                })
-            end
-        end
-    end
-end
-
-function generateCards()
-    local cardPool = {
-        { name = "MULTIBALL", desc = "Balls duplicate after 10 combo", effect = "multiball" },
-        { name = "TINY PADDLE", desc = "Paddle 50% smaller but 3x score", effect = "tinyPaddle" },
-        { name = "EXPLODING BRICKS", desc = "Bricks infect neighbors on death", effect = "exploding" },
-        { name = "GHOST BALL", desc = "Balls pass through bricks once", effect = "ghostBall" },
-        { name = "COMBO MAGNET", desc = "Combo builds 2x faster", effect = "comboMagnet" },
-        { name = "GLITCH PADDLE", desc = "Paddle teleports randomly", effect = "glitchPaddle" },
-    }
-
-    cards = {}
-    for i = 1, 3 do
-        local card = cardPool[math.random(#cardPool)]
-        table.insert(cards, {
-            name = card.name,
-            desc = card.desc,
-            effect = card.effect
-        })
-    end
+    sm:switch("menu", game, sm)
 end
 
 function love.update(dt)
-    scanlineOffset = (scanlineOffset + dt * 50) % 4
+    -- Global timers
+    game.scanlineOffset = (game.scanlineOffset + dt * 50) % 4
+    game.camera:update(dt, Config.SHAKE_DECAY_SPEED)
+    game.timers:update(dt)
 
-    if shakeAmount > 0 then
-        shakeAmount = math.max(0, shakeAmount - dt * 10)
-    end
-
-    if gameState == STATE_PLAYING then
-        updateGame(dt)
-    end
-end
-
-function updateGame(dt)
-    if love.keyboard.isDown("right") or love.keyboard.isDown("d") then
-        paddle.x = paddle.x + paddle.speed * dt
-    end
-    if love.keyboard.isDown("left") or love.keyboard.isDown("a") then
-        paddle.x = paddle.x - paddle.speed * dt
-    end
-
-    paddle.x = math.max(paddle.width / 2, math.min(GAME_WIDTH - paddle.width / 2, paddle.x))
-
-    if not ball.active then
-        if love.keyboard.isDown("space") or love.keyboard.isDown("return") then
-            ball.active = true
-            ball.dy = -350
-            ball.dx = (math.random() - 0.5) * 200
-        end
-    else
-        ball.x = ball.x + ball.dx * dt
-        ball.y = ball.y + ball.dy * dt
-
-        if ball.x - ball.radius < 0 or ball.x + ball.radius > GAME_WIDTH then
-            ball.dx = -ball.dx
-            ball.x = math.max(ball.radius, math.min(GAME_WIDTH - ball.radius, ball.x))
-        end
-
-        if ball.y - ball.radius < 0 then
-            ball.dy = -ball.dy
-            ball.y = ball.radius
-        end
-
-        if ball.y + ball.radius > paddle.y and
-           ball.y - ball.radius < paddle.y + paddle.height and
-           ball.x > paddle.x - paddle.width / 2 and
-           ball.x < paddle.x + paddle.width / 2 then
-            ball.dy = -math.abs(ball.dy)
-            ball.y = paddle.y - ball.radius
-            local hitPos = (ball.x - paddle.x) / (paddle.width / 2)
-            ball.dx = hitPos * 300
-            combo = combo + 1
-            shakeAmount = 3
-        end
-
-        if ball.y > GAME_HEIGHT + 50 then
-            if combo > 0 then
-                ball.active = false
-                ball.x = paddle.x
-                ball.y = paddle.y - 30
-                combo = 0
-            else
-                gameState = STATE_GAME_OVER
-                if soundFah then soundFah:clone():play() end
-            end
-        end
-
-        for i = #bricks, 1, -1 do
-            local b = bricks[i]
-            if b.active and
-               ball.x + ball.radius > b.x and
-               ball.x - ball.radius < b.x + b.width and
-               ball.y + ball.radius > b.y and
-               ball.y - ball.radius < b.y + b.height then
-
-                local overlapLeft = (ball.x + ball.radius) - b.x
-                local overlapRight = (b.x + b.width) - (ball.x - ball.radius)
-                local overlapTop = (ball.y + ball.radius) - b.y
-                local overlapBottom = (b.y + b.height) - (ball.y - ball.radius)
-
-                local minOverlapX = math.min(overlapLeft, overlapRight)
-                local minOverlapY = math.min(overlapTop, overlapBottom)
-
-                if minOverlapX < minOverlapY then
-                    ball.dx = -ball.dx
-                else
-                    ball.dy = -ball.dy
-                end
-
-                b.hp = b.hp - 1
-                if b.hp <= 0 then
-                    b.active = false
-                    score = score + 100 * (1 + combo * 0.1)
-                    shakeAmount = 5
-                    if soundPunch then soundPunch:clone():play() end
-                else
-                    if soundBonk then soundBonk:clone():play() end
-                end
-                break
-            end
-        end
-
-        local activeBricks = 0
-        for _, b in ipairs(bricks) do
-            if b.active then activeBricks = activeBricks + 1 end
-        end
-
-        if activeBricks == 0 then
-            brainrotLevel = brainrotLevel + 1
-            if stage >= 3 then
-                gameState = STATE_VICTORY
-            else
-                stage = stage + 1
-                generateCards()
-                gameState = STATE_CARD_SELECT
-            end
-        end
-    end
+    -- Delegate to current state
+    sm:update(dt)
 end
 
 function love.keypressed(key)
-    if gameState == STATE_CARD_SELECT then
-        if key == "1" or key == "2" or key == "3" then
-            local idx = tonumber(key)
-            if cards[idx] then
-                applyCard(cards[idx])
-                ball.active = false
-                ball.x = paddle.x
-                ball.y = paddle.y - 30
-                generateBricks()
-                gameState = STATE_PLAYING
-            end
+    -- Global: fullscreen toggle
+    if key == "f11" or key == "f" then
+        local fs = not love.window.getFullscreen()
+        love.window.setFullscreen(fs)
+        if not fs then
+            love.window.setMode(Config.GAME_WIDTH, Config.GAME_HEIGHT)
         end
-    elseif gameState == STATE_GAME_OVER or gameState == STATE_VICTORY then
-        if key == "r" or key == "return" then
-            resetGame()
-        end
+        return
     end
-end
 
-function applyCard(card)
-    if card.effect == "tinyPaddle" then
-        paddle.width = paddle.width * 0.5
-        score = score * 3
-    elseif card.effect == "comboMagnet" then
-        combo = combo + 5
-    elseif card.effect == "glitchPaddle" then
-        paddle.x = math.random(paddle.width, GAME_WIDTH - paddle.width)
-    end
-    score = score + 500
+    sm:keypressed(key)
 end
 
 function love.draw()
-    love.graphics.push()
-    if shakeAmount > 0 then
-        local shakeX = (math.random() - 0.5) * shakeAmount * 2
-        local shakeY = (math.random() - 0.5) * shakeAmount * 2
-        love.graphics.translate(shakeX, shakeY)
-    end
+    local w, h = love.graphics.getDimensions()
+    local scaleX = w / Config.GAME_WIDTH
+    local scaleY = h / Config.GAME_HEIGHT
+    local scale  = math.min(scaleX, scaleY)
+    local offsetX = (w - Config.GAME_WIDTH * scale) / 2
+    local offsetY = (h - Config.GAME_HEIGHT * scale) / 2
 
-    if gameState == STATE_PLAYING then
-        drawGame()
-    elseif gameState == STATE_CARD_SELECT then
-        drawCards()
-    elseif gameState == STATE_GAME_OVER then
-        drawGameOver()
-    elseif gameState == STATE_VICTORY then
-        drawVictory()
-    end
+    love.graphics.setBackgroundColor(0, 0, 0)
+    love.graphics.push()
+    love.graphics.translate(offsetX, offsetY)
+    love.graphics.scale(scale, scale)
+
+    -- Camera shake
+    game.camera:applyShake()
+
+    -- Current state draws
+    sm:draw()
+
+    -- Camera flash overlay
+    game.camera:drawFlash(Config.GAME_WIDTH, Config.GAME_HEIGHT)
 
     love.graphics.pop()
+
+    -- CRT scanlines (drawn in screen space)
     drawScanlines()
 end
 
-function drawGame()
-    love.graphics.setBackgroundColor(0.1, 0.1, 0.15)
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.setFont(font)
-    love.graphics.print("SCORE: " .. math.floor(score), 20, 20)
-    love.graphics.print("COMBO: " .. combo, 20, 40)
-    love.graphics.print("STAGE: " .. stage, GAME_WIDTH - 100, 20)
-    love.graphics.print("BRAINROT: " .. brainrotLevel, GAME_WIDTH - 150, 40)
-
-    love.graphics.setColor(1, 1, 1)
-    if imgScaled then
-        love.graphics.draw(imgScaled, paddle.x - paddle.width / 2, paddle.y)
-    else
-        love.graphics.setColor(0.3, 0.8, 1)
-        love.graphics.rectangle("fill", paddle.x - paddle.width / 2, paddle.y, paddle.width, paddle.height)
-    end
-
-    love.graphics.setColor(1, 0.3, 0.3)
-    love.graphics.circle("fill", ball.x, ball.y, ball.radius)
-
-    for _, b in ipairs(bricks) do
-        if b.active then
-            local hue = (b.hp / 5)
-            love.graphics.setColor(1 - hue * 0.5, 0.3 + hue * 0.5, 0.5)
-            love.graphics.rectangle("fill", b.x, b.y, b.width, b.height)
-            love.graphics.setColor(1, 1, 1, 0.5)
-            love.graphics.rectangle("line", b.x, b.y, b.width, b.height)
-        end
-    end
-
-    if not ball.active then
-        love.graphics.setFont(font)
-        love.graphics.setColor(1, 1, 0.5)
-        love.graphics.printf("PRESS SPACE TO LAUNCH", 0, GAME_HEIGHT / 2 - 20, GAME_WIDTH, "center")
-    end
-end
-
-function drawCards()
-    love.graphics.setBackgroundColor(0.05, 0.05, 0.1)
-    love.graphics.setFont(font)
-    love.graphics.setColor(1, 1, 0.3)
-    love.graphics.printf("=== STAGE COMPLETE ===", 0, 50, GAME_WIDTH, "center")
-
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("Choose a modifier card:", 0, 90, GAME_WIDTH, "center")
-
-    for i, card in ipairs(cards) do
-        local y = 150 + (i - 1) * 120
-
-        love.graphics.setColor(0.2, 0.4, 0.6)
-        love.graphics.rectangle("fill", GAME_WIDTH / 2 - 150, y, 300, 100)
-        love.graphics.setColor(0.5, 0.7, 1)
-        love.graphics.rectangle("line", GAME_WIDTH / 2 - 150, y, 300, 100)
-
-        love.graphics.setColor(1, 1, 0.8)
-        love.graphics.setFont(font)
-        love.graphics.print("[" .. i .. "] " .. card.name, GAME_WIDTH / 2 - 130, y + 15)
-
-        love.graphics.setColor(0.8, 0.8, 0.8)
-        love.graphics.setFont(smallFont)
-        love.graphics.print(card.desc, GAME_WIDTH / 2 - 130, y + 45)
-    end
-end
-
-function drawGameOver()
-    love.graphics.setBackgroundColor(0.2, 0.05, 0.05)
-    love.graphics.setFont(font)
-    love.graphics.setColor(1, 0.3, 0.3)
-    love.graphics.printf("=== GAME OVER ===", 0, GAME_HEIGHT / 2 - 40, GAME_WIDTH, "center")
-
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("Final Score: " .. math.floor(score), 0, GAME_HEIGHT / 2, GAME_WIDTH, "center")
-    love.graphics.printf("Stage Reached: " .. stage, 0, GAME_HEIGHT / 2 + 30, GAME_WIDTH, "center")
-    love.graphics.printf("Press R to restart", 0, GAME_HEIGHT / 2 + 80, GAME_WIDTH, "center")
-end
-
-function drawVictory()
-    love.graphics.setBackgroundColor(0.1, 0.1, 0.3)
-    love.graphics.setFont(font)
-    love.graphics.setColor(0.3, 1, 0.5)
-    love.graphics.printf("=== VICTORY ===", 0, GAME_HEIGHT / 2 - 40, GAME_WIDTH, "center")
-
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.printf("Final Score: " .. math.floor(score), 0, GAME_HEIGHT / 2, GAME_WIDTH, "center")
-    love.graphics.printf("You survived the brainrot!", 0, GAME_HEIGHT / 2 + 40, GAME_WIDTH, "center")
-    love.graphics.printf("Press R to play again", 0, GAME_HEIGHT / 2 + 80, GAME_WIDTH, "center")
-end
+--------------------------------------------------------------------
+-- CRT scanline overlay (kept in main for now, will move to effects/)
+--------------------------------------------------------------------
 
 function drawScanlines()
+    local w, h = love.graphics.getDimensions()
+
     love.graphics.setColor(0, 0, 0, 0.1)
-    for y = scanlineOffset, GAME_HEIGHT, 4 do
-        love.graphics.rectangle("fill", 0, y, GAME_WIDTH, 2)
+    for y = game.scanlineOffset, h, 4 do
+        love.graphics.rectangle("fill", 0, y, w, 2)
     end
 
-    if brainrotLevel > 0 then
-        love.graphics.setColor(1, 0, 0, 0.02 * brainrotLevel)
-        love.graphics.rectangle("fill", 0, 0, GAME_WIDTH, GAME_HEIGHT)
+    -- Brainrot tint
+    if game.brainrotLevel > 0 then
+        love.graphics.setColor(1, 0, 0, 0.02 * game.brainrotLevel)
+        love.graphics.rectangle("fill", 0, 0, w, h)
     end
 
+    -- CRT border
     love.graphics.setColor(0, 0, 0, 0.3)
-    love.graphics.rectangle("fill", 0, 0, 3, GAME_HEIGHT)
-    love.graphics.rectangle("fill", GAME_WIDTH - 3, 0, 3, GAME_HEIGHT)
-    love.graphics.rectangle("fill", 0, 0, GAME_WIDTH, 3)
-    love.graphics.rectangle("fill", 0, GAME_HEIGHT - 3, GAME_WIDTH, 3)
+    love.graphics.rectangle("fill", 0, 0, 3, h)
+    love.graphics.rectangle("fill", w - 3, 0, 3, h)
+    love.graphics.rectangle("fill", 0, 0, w, 3)
+    love.graphics.rectangle("fill", 0, h - 3, w, 3)
 end
