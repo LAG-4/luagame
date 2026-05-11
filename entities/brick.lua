@@ -1,16 +1,21 @@
--- Brick entity + grid generation
+-- Brick entity — dark gothic grunge style with meme names
 local Config = require("config")
 local Brick = {}
 
-function Brick.new(x, y, width, height, hp)
+Brick.MEME_NAMES = {
+    "SKIBIDI", "RIZZ GOD", "OHIO", "FANUM TAX", "GYATT",
+    "SUS", "NO CAP", "BASED", "MID", "CRINGE",
+    "MEWING", "NPC", "DELULU", "SIGMA", "W EDIT",
+    "FAX", "VALID", "COPE", "L BOZO", "SLAY",
+    "OP", "GOATED", "BUSSIN", "YEET", "RATIO",
+}
+
+function Brick.new(x, y, width, height, hp, colorIdx, nameIdx)
     return {
-        x      = x,
-        y      = y,
-        width  = width,
-        height = height,
-        hp     = hp,
-        maxHp  = hp,
-        active = true,
+        x = x, y = y, width = width, height = height,
+        hp = hp, maxHp = hp, active = true,
+        colorIdx = colorIdx or 1, hitFlash = 0,
+        name = Brick.MEME_NAMES[nameIdx or math.random(#Brick.MEME_NAMES)],
     }
 end
 
@@ -18,18 +23,22 @@ function Brick.generateGrid(stage)
     local bricks = {}
     local rows = Config.BRICK_BASE_ROWS + stage
     local cols = Config.BRICK_COLS
-    local brickW = (Config.GAME_WIDTH - Config.BRICK_MARGIN) / cols
+    local totalW = Config.GAME_WIDTH - Config.BRICK_MARGIN_LEFT - Config.BRICK_MARGIN_RIGHT
+    local brickW = totalW / cols
+    local nc = 1
 
     for row = 1, rows do
         for col = 1, cols do
             if math.random() < Config.BRICK_SPAWN_CHANCE then
+                local ci = ((row - 1) % #Config.BRICK_COLORS) + 1
                 table.insert(bricks, Brick.new(
-                    (Config.BRICK_MARGIN / 2) + (col - 1) * brickW,
+                    Config.BRICK_MARGIN_LEFT + (col - 1) * brickW,
                     Config.BRICK_TOP_OFFSET + (row - 1) * Config.BRICK_HEIGHT,
                     brickW - Config.BRICK_GAP,
                     Config.BRICK_HEIGHT - Config.BRICK_GAP,
-                    row
+                    row, ci, nc
                 ))
+                nc = (nc % #Brick.MEME_NAMES) + 1
             end
         end
     end
@@ -38,19 +47,56 @@ end
 
 function Brick.countActive(bricks)
     local n = 0
-    for _, b in ipairs(bricks) do
-        if b.active then n = n + 1 end
-    end
+    for _, b in ipairs(bricks) do if b.active then n = n + 1 end end
     return n
 end
 
-function Brick.draw(brick)
+function Brick.updateAll(bricks, dt)
+    for _, b in ipairs(bricks) do
+        if b.hitFlash > 0 then b.hitFlash = math.max(0, b.hitFlash - dt * 6) end
+    end
+end
+
+function Brick.draw(brick, font)
     if not brick.active then return end
-    local hue = brick.hp / 5
-    love.graphics.setColor(1 - hue * 0.5, 0.3 + hue * 0.5, 0.5)
-    love.graphics.rectangle("fill", brick.x, brick.y, brick.width, brick.height)
-    love.graphics.setColor(1, 1, 1, 0.5)
-    love.graphics.rectangle("line", brick.x, brick.y, brick.width, brick.height)
+    local c = Config.BRICK_COLORS[brick.colorIdx] or {0.5, 0.3, 0.3}
+    local hpRatio = brick.hp / brick.maxHp
+    local dim = 0.55 + 0.45 * hpRatio
+
+    -- Shadow
+    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.rectangle("fill", brick.x + 2, brick.y + 2,
+                            brick.width, brick.height, 3, 3)
+
+    -- Dark grunge body
+    love.graphics.setColor(c[1]*dim*0.5, c[2]*dim*0.5, c[3]*dim*0.5)
+    love.graphics.rectangle("fill", brick.x, brick.y, brick.width, brick.height, 3, 3)
+
+    -- Lighter top half (worn metal look)
+    love.graphics.setColor(c[1]*dim*0.8, c[2]*dim*0.8, c[3]*dim*0.8)
+    love.graphics.rectangle("fill", brick.x, brick.y, brick.width, brick.height * 0.5, 3, 0)
+
+    -- Hit flash
+    if brick.hitFlash > 0 then
+        love.graphics.setColor(1, 0.8, 0.6, brick.hitFlash * 0.7)
+        love.graphics.rectangle("fill", brick.x, brick.y, brick.width, brick.height, 3, 3)
+    end
+
+    -- Meme name
+    if font and brick.width > 40 then
+        love.graphics.setFont(font)
+        love.graphics.setColor(1, 1, 1, 0.75 * dim)
+        local tw = font:getWidth(brick.name)
+        local th = font:getHeight()
+        local sc = math.min(1, (brick.width - 8) / math.max(tw, 1))
+        love.graphics.print(brick.name,
+            brick.x + brick.width/2 - (tw*sc)/2,
+            brick.y + brick.height/2 - (th*sc)/2, 0, sc, sc)
+    end
+
+    -- Border (dark, subtle)
+    love.graphics.setColor(c[1]*0.3, c[2]*0.3, c[3]*0.3, 0.8 * dim)
+    love.graphics.rectangle("line", brick.x, brick.y, brick.width, brick.height, 3, 3)
 end
 
 return Brick

@@ -1,35 +1,34 @@
--- Collision detection & resolution
+-- Collision detection — sidebar-aware boundaries
 local Config = require("config")
 local Collision = {}
 
--- Ball vs screen walls — returns true if bounced
 function Collision.ballWalls(ball)
     local bounced = false
-    -- Left / right walls
-    if ball.x - ball.radius < 0 then
+    -- Left wall = sidebar edge
+    if ball.x - ball.radius < Config.PLAY_AREA_LEFT then
         ball.dx = math.abs(ball.dx)
-        ball.x = ball.radius
+        ball.x = Config.PLAY_AREA_LEFT + ball.radius
         bounced = true
     elseif ball.x + ball.radius > Config.GAME_WIDTH then
         ball.dx = -math.abs(ball.dx)
         ball.x = Config.GAME_WIDTH - ball.radius
         bounced = true
     end
-    -- Ceiling
-    if ball.y - ball.radius < 0 then
+    -- Top wall = below top bar
+    if ball.y - ball.radius < Config.TOP_BAR_HEIGHT then
         ball.dy = math.abs(ball.dy)
-        ball.y = ball.radius
+        ball.y = Config.TOP_BAR_HEIGHT + ball.radius
         bounced = true
     end
     return bounced
 end
 
--- Ball vs paddle — returns true if hit
 function Collision.ballPaddle(ball, paddle)
-    if ball.y + ball.radius > paddle.y and
+    if ball.dy > 0 and
+       ball.y + ball.radius > paddle.y and
        ball.y - ball.radius < paddle.y + paddle.height and
-       ball.x > paddle.x - paddle.width / 2 and
-       ball.x < paddle.x + paddle.width / 2 then
+       ball.x > paddle.x - paddle.width/2 and
+       ball.x < paddle.x + paddle.width/2 then
         ball.dy = -math.abs(ball.dy)
         ball.y = paddle.y - ball.radius
         local hitPos = (ball.x - paddle.x) / (paddle.width / 2)
@@ -39,36 +38,30 @@ function Collision.ballPaddle(ball, paddle)
     return false
 end
 
--- Ball vs single brick — returns true if hit
-function Collision.ballBrick(ball, brick)
+function Collision.ballBrick(ball, brick, ghost)
     if not brick.active then return false end
     if ball.x + ball.radius > brick.x and
        ball.x - ball.radius < brick.x + brick.width and
        ball.y + ball.radius > brick.y and
        ball.y - ball.radius < brick.y + brick.height then
-
-        -- Determine which side was hit
-        local overlapLeft   = (ball.x + ball.radius) - brick.x
-        local overlapRight  = (brick.x + brick.width) - (ball.x - ball.radius)
-        local overlapTop    = (ball.y + ball.radius) - brick.y
-        local overlapBottom = (brick.y + brick.height) - (ball.y - ball.radius)
-
-        local minX = math.min(overlapLeft, overlapRight)
-        local minY = math.min(overlapTop, overlapBottom)
-
-        if minX < minY then
-            ball.dx = -ball.dx
-        else
-            ball.dy = -ball.dy
+        if not ghost then
+            local oL = (ball.x + ball.radius) - brick.x
+            local oR = (brick.x + brick.width) - (ball.x - ball.radius)
+            local oT = (ball.y + ball.radius) - brick.y
+            local oB = (brick.y + brick.height) - (ball.y - ball.radius)
+            if math.min(oL, oR) < math.min(oT, oB) then
+                ball.dx = -ball.dx
+            else
+                ball.dy = -ball.dy
+            end
         end
         return true
     end
     return false
 end
 
--- Check if ball fell off the bottom
 function Collision.ballDead(ball)
-    return ball.y > Config.GAME_HEIGHT + 50
+    return ball.y > Config.GAME_HEIGHT + 30
 end
 
 return Collision
