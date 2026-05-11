@@ -15,6 +15,7 @@ local brainrotLevel = 0
 local scanlineOffset = 0
 local shakeAmount = 0
 local soundBonk, soundPunch, soundFah
+local imgPaddle
 
 function love.load()
     love.window.setTitle("Brainrot Arcade - Wireframe Prototype")
@@ -25,6 +26,13 @@ function love.load()
     soundPunch = love.audio.newSource("sounds/punch.mp3", "static")
     soundFah = love.audio.newSource("sounds/fah.mp3", "static")
     soundFah:setVolume(0.5)
+    imgPaddle = love.graphics.newImage("assets/sahur.png")
+    imgPaddle:setFilter("linear", "linear")
+    local scale = 100 / imgPaddle:getWidth()
+    imgScaled = love.graphics.newCanvas(100, imgPaddle:getHeight() * scale)
+    love.graphics.setCanvas(imgScaled)
+    love.graphics.draw(imgPaddle, 0, 0, 0, scale, scale)
+    love.graphics.setCanvas()
     resetGame()
 end
 
@@ -45,6 +53,10 @@ function resetGame()
         height = 15,
         speed = 400
     }
+    if imgScaled then
+        paddle.width = imgScaled:getWidth()
+        paddle.height = imgScaled:getHeight()
+    end
 
     ball = {
         x = GAME_WIDTH / 2,
@@ -284,8 +296,13 @@ function drawGame()
     love.graphics.print("STAGE: " .. stage, GAME_WIDTH - 100, 20)
     love.graphics.print("BRAINROT: " .. brainrotLevel, GAME_WIDTH - 150, 40)
 
-    love.graphics.setColor(0.3, 0.8, 1)
-    love.graphics.rectangle("fill", paddle.x - paddle.width / 2, paddle.y, paddle.width, paddle.height)
+    love.graphics.setColor(1, 1, 1)
+    if imgScaled then
+        love.graphics.draw(imgScaled, paddle.x - paddle.width / 2, paddle.y)
+    else
+        love.graphics.setColor(0.3, 0.8, 1)
+        love.graphics.rectangle("fill", paddle.x - paddle.width / 2, paddle.y, paddle.width, paddle.height)
+    end
 
     love.graphics.setColor(1, 0.3, 0.3)
     love.graphics.circle("fill", ball.x, ball.y, ball.radius)
