@@ -46,6 +46,8 @@ end
 
 function Playing:update(dt)
     local game = self.game
+    local steps = math.max(1, math.ceil(dt / 0.008))
+    local stepDt = dt / steps
 
     -- Update audio state
     game.audio:updateState(game.brainrotLevel, game.combo)
@@ -77,80 +79,9 @@ function Playing:update(dt)
             ball.x = game.paddle.x
             ball.y = game.paddle.y - 25
         else
-            Ball.update(ball, dt)
-
-            if game.modifiers:has("gravityWell") then
-                self:applyGravityWell(ball, dt)
-            end
-
-            Collision.ballWalls(ball)
-
-            if Collision.ballPaddle(ball, game.paddle) then
-                local comboInc = game.modifiers:has("comboMagnet") and 2 or 1
-                game.combo = game.combo + comboInc
-                game.comboTimer = 0
-                game.camera:shake(Config.SHAKE_PADDLE_HIT)
-                game.particles:createHitSparks(ball.x, ball.y)
-                Ball.enforceMinVerticalSpeed(ball)
-
-                -- Phase 4: combo-scaled sound
-                game.audio:playCombo("bonk", game.combo)
-
-                local msg = Brainrot.getComboMessage(game.combo, game.brainrotLevel)
-                if msg then game.popups:banner(msg, {1, 0.6, 0.1}) end
-
-                if game.modifiers:has("glitchPaddle") then
-                    game.paddle.x = math.random(
-                        math.floor(Config.PLAY_AREA_LEFT + game.paddle.width),
-                        math.floor(Config.GAME_WIDTH - game.paddle.width))
-                end
-
-                if game.modifiers:has("multiball") and game.combo > 0 and game.combo % 10 == 0 then
-                    self:spawnExtraBalls(ball)
-                    game.popups:banner("MULTIBALL!", {0.8, 0.2, 0.2})
-                end
-            end
-
-            local isGhost = game.modifiers:has("ghostBall")
-            local isPiercing = game.modifiers:has("piercingShot")
-            local hitOne = false
-
-            for j = #game.bricks, 1, -1 do
-                local brick = game.bricks[j]
-                if (not hitOne or isGhost or isPiercing) then
-                    if Collision.ballBrick(ball, brick, isGhost or isPiercing) then
-                        brick.hp = brick.hp - 1
-                        brick.hitFlash = 1.0
-
-                        if brick.hp <= 0 then
-                            brick.active = false
-                            local mult = 1
-                            if game.modifiers:has("scoreFrenzy") then mult = mult * 3 end
-                            if game.modifiers:has("speedDemon") then mult = mult * 2 end
-                            local gained = math.floor(Config.SCORE_PER_BRICK
-                                * (1 + game.combo * Config.COMBO_SCORE_MULTIPLIER) * mult)
-                            game.score = game.score + gained
-                            game.camera:shake(Config.SHAKE_BRICK_DESTROY)
-
-                            -- Particle debris
-                            local brickColor = Config.BRICK_COLORS[brick.colorIdx] or {0.7, 0.3, 0.2}
-                            game.particles:createBrickDebris(brick.x + brick.width/2, brick.y + brick.height/2, brickColor)
-
-                            game.popups:text(brick.x + brick.width/2, brick.y,
-                                "+" .. gained, Config.COLOR_GOLD, 0.7, 0.8)
-
-                            game.audio:playCombo("punch", game.combo)
-
-                            if game.modifiers:has("exploding") then self:explodeAdjacent(brick) end
-                            if game.modifiers:has("chainLightning") then self:chainLightning() end
-                        else
-                            game.audio:play("bonk", {volume = 0.6})
-                        end
-
-                        hitOne = true
-                        if not isGhost and not isPiercing then break end
-                    end
-                end
+            for _ = 1, steps do
+                self:updateActiveBall(ball, stepDt)
+                if not ball.alive then break end
             end
 
             if Collision.ballDead(ball) then
@@ -216,10 +147,104 @@ function Playing:update(dt)
     end
 end
 
+function Playing:updateActiveBall(ball, dt)
+    local game = self.game
+    Ball.update(ball, dt)
+
+    if game.modifiers:has("gravityWell") then
+        self:applyGravityWell(ball, dt)
+    end
+
+    Collision.ballWalls(ball)
+    Ball.enforceSpeedLimits(ball)
+
+    if Collision.ballPaddle(ball, game.paddle) then
+        local comboInc = game.modifiers:has("comboMagnet") and 2 or 1
+        game.combo = game.combo + comboInc
+        game.comboTimer = 0
+        game.camera:shake(Config.SHAKE_PADDLE_HIT)
+        game.particles:createHitSparks(ball.x, ball.y)
+        Ball.enforceSpeedLimits(ball)
+
+        game.audio:playCombo("bonk", game.combo)
+
+        local msg = Brainrot.getComboMessage(game.combo, game.brainrotLevel)
+        if msg then game.popups:banner(msg, {1, 0.6, 0.1}) end
+
+        if game.modifiers:has("glitchPaddle") then
+            game.paddle.x = math.random(
+                math.floor(Config.PLAY_AREA_LEFT + game.paddle.width),
+                math.floor(Config.GAME_WIDTH - game.paddle.width))
+        end
+
+        if game.modifiers:has("multiball") and game.combo > 0 and game.combo % 10 == 0 then
+            self:spawnExtraBalls(ball)
+            game.popups:banner("MULTIBALL!", {0.8, 0.2, 0.2})
+        end
+    end
+
+    local isGhost = game.modifiers:has("ghostBall")
+    local isPiercing = game.modifiers:has("piercingShot")
+    local hitOne = false
+
+    for j = #game.bricks, 1, -1 do
+        local brick = game.bricks[j]
+        if not hitOne or isGhost or isPiercing then
+            if Collision.ballBrick(ball, brick, isGhost or isPiercing) then
+                self:damageBrick(brick)
+                hitOne = true
+                Ball.enforceSpeedLimits(ball)
+                if not isGhost and not isPiercing then break end
+            end
+        end
+    end
+end
+
+function Playing:damageBrick(brick)
+    local game = self.game
+    brick.hp = brick.hp - 1
+    brick.hitFlash = 1.0
+
+    if brick.hp <= 0 then
+        brick.active = false
+        local mult = 1
+        if game.modifiers:has("scoreFrenzy") then mult = mult * 3 end
+        if game.modifiers:has("speedDemon") then mult = mult * 2 end
+        local gained = math.floor(Config.SCORE_PER_BRICK
+            * (1 + game.combo * Config.COMBO_SCORE_MULTIPLIER) * mult)
+        game.score = game.score + gained
+        game.camera:shake(Config.SHAKE_BRICK_DESTROY)
+
+        local brickColor = Config.BRICK_COLORS[brick.colorIdx] or {0.7, 0.3, 0.2}
+        game.particles:createBrickDebris(brick.x + brick.width/2, brick.y + brick.height/2, brickColor)
+        game.popups:text(brick.x + brick.width/2, brick.y, "+" .. gained, Config.COLOR_GOLD, 0.7, 0.8)
+        game.audio:playCombo("punch", game.combo)
+
+        if game.modifiers:has("exploding") then self:explodeAdjacent(brick) end
+        if game.modifiers:has("chainLightning") then self:chainLightning() end
+    else
+        game.audio:play("bonk", {volume = 0.6})
+    end
+end
+
 function Playing:draw()
     local game = self.game
     local W, H = Config.GAME_WIDTH, Config.GAME_HEIGHT
     love.graphics.setBackgroundColor(Config.COLOR_BG)
+
+    love.graphics.setColor(0.025, 0.023, 0.022, 1)
+    love.graphics.rectangle("fill", 0, 0, W, H)
+    love.graphics.setColor(0.08, 0.075, 0.068, 0.18)
+    for x = Config.PLAY_AREA_LEFT, W, 96 do
+        love.graphics.line(x, Config.TOP_BAR_HEIGHT, x + 80, H)
+    end
+    for y = Config.TOP_BAR_HEIGHT, H, 80 do
+        love.graphics.line(Config.PLAY_AREA_LEFT, y, W, y + 16)
+    end
+    love.graphics.setColor(0.4, 0.015, 0.01, 0.12)
+    love.graphics.circle("fill", (Config.PLAY_AREA_LEFT + W) / 2, H / 2 + 20, 150)
+    love.graphics.setColor(0, 0, 0, 0.35)
+    love.graphics.rectangle("fill", Config.PLAY_AREA_LEFT, Config.TOP_BAR_HEIGHT, W - Config.PLAY_AREA_LEFT, H - Config.TOP_BAR_HEIGHT)
 
     -- Atmospheric background text (faded watermarks in play area)
     if self.bgTexts then
@@ -301,13 +326,15 @@ end
 
 function Playing:spawnExtraBalls(source)
     local game = self.game
+    if #game.balls >= 8 then return end
     for _ = 1, 2 do
+        if #game.balls >= 8 then break end
         local nb = Ball.new(source.x, source.y)
         nb.active = true
         nb.dx = source.dx + (math.random() - 0.5) * 300
         nb.dy = source.dy + (math.random() - 0.5) * 150
         if game.modifiers:has("megaBall") then nb.radius = Config.BALL_RADIUS * 2 end
-        Ball.enforceMinVerticalSpeed(nb)
+        Ball.enforceSpeedLimits(nb)
         table.insert(game.balls, nb)
     end
 end

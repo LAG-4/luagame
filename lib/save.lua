@@ -1,7 +1,7 @@
 -- Save/Load system — Phase 6: High scores and settings persistence
 local Save = {}
-
 local SAVE_PATH = "brainrot_arcade.dat"
+local json = require("lib.json")
 
 function Save.load()
     local data = {
@@ -11,13 +11,14 @@ function Save.load()
             volume = 0.8,
             crtEffect = true,
             screenShake = true,
+            fullscreen = true,
         }
     }
 
     local success, err = love.filesystem.getInfo(SAVE_PATH)
     if success then
         local loaded = love.filesystem.read(SAVE_PATH)
-        local ok, decoded = pcall(love.data.unserialize, loaded)
+        local ok, decoded = pcall(json.decode, loaded)
         if ok and decoded then
             data.highScore = decoded.highScore or 0
             data.highScoreEndless = decoded.highScoreEndless or 0
@@ -32,7 +33,7 @@ function Save.load()
 end
 
 function Save.save(data)
-    local serialized = love.data.serialize("json", data)
+    local serialized = json.encode(data)
     love.filesystem.write(SAVE_PATH, serialized)
 end
 

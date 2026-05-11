@@ -2,7 +2,7 @@
 local Config = require("config")
 local Cards  = require("data.cards")
 local Ball   = require("entities.ball")
-local Brick  = require("entities.brick")
+local Layouts = require("data.layouts")
 
 local CardSelect = {}
 
@@ -21,8 +21,11 @@ function CardSelect:draw()
     local W, H = Config.GAME_WIDTH, Config.GAME_HEIGHT
     love.graphics.setBackgroundColor(Config.COLOR_BG_DARK)
 
-    -- Dim overlay of play area
-    love.graphics.setColor(0, 0, 0, 0.5)
+    love.graphics.setColor(0.025, 0.022, 0.021, 1)
+    love.graphics.rectangle("fill", 0, 0, W, H)
+    love.graphics.setColor(0.45, 0.02, 0.015, 0.12)
+    love.graphics.circle("fill", W / 2, H / 2, 260)
+    love.graphics.setColor(0, 0, 0, 0.50)
     love.graphics.rectangle("fill", 0, 0, W, H)
 
     -- Title
@@ -111,7 +114,7 @@ function CardSelect:keypressed(key)
             self.selected = idx
             Cards.apply(self.cards[idx], self.game)
             self.game.balls = { Ball.new() }
-            self.game.bricks = Brick.generateGrid(self.game.stage)
+            self.game.bricks = Layouts.get(self.game.stage)
             self.sm:switch("playing", self.game, self.sm, false)
         end
     end

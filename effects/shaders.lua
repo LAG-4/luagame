@@ -1,21 +1,11 @@
 -- CRT Shader effects — barrel distortion, scanlines, chromatic aberration, vignette
 local Shaders = {}
 
--- Vertex shader (standard)
-Shaders.vertexCode = [[
-    vertex attribute vec2 VertexPosition;
-    uniform mat4 Projection;
-    void main() {
-        gl_Position = Projection * vec4(VertexPosition, 0.0, 1.0);
-    }
-]]
-
 -- Fragment shader with full CRT effect
 Shaders.fragmentCode = [[
-    uniform float time;
-    uniform float brainrot;
-    uniform vec2 resolution;
-    uniform sampler2D background;
+    extern float time;
+    extern float brainrot;
+    extern vec2 resolution;
 
     // Curve the screen (barrel distortion)
     vec2 curve(vec2 uv) {
@@ -26,24 +16,23 @@ Shaders.fragmentCode = [[
         return uv;
     }
 
-    void main() {
-        vec2 uv = gl_FragCoord.xy / resolution;
+    vec4 effect(vec4 vcolor, Image tex, vec2 texture_coords, vec2 screen_coords) {
+        vec2 uv = screen_coords / resolution;
 
         // Apply barrel distortion
         vec2 curved = curve(uv);
 
         // Check bounds after curvature
         if (curved.x < 0.0 || curved.x > 1.0 || curved.y < 0.0 || curved.y > 1.0) {
-            gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-            return;
+            return vec4(0.0, 0.0, 0.0, 1.0);
         }
 
         // Chromatic aberration — increases with brainrot
         float aberration = 0.002 + brainrot * 0.001;
         vec4 color;
-        color.r = texture2D(background, curved + vec2(aberration, 0.0)).r;
-        color.g = texture2D(background, curved).g;
-        color.b = texture2D(background, curved - vec2(aberration, 0.0)).b;
+        color.r = Texel(tex, curved + vec2(aberration, 0.0)).r;
+        color.g = Texel(tex, curved).g;
+        color.b = Texel(tex, curved - vec2(aberration, 0.0)).b;
         color.a = 1.0;
 
         // Scanlines
@@ -72,12 +61,12 @@ Shaders.fragmentCode = [[
             color.rgb += (noise - 0.5) * 0.1 * (brainrot - 8.0) / 2.0;
         }
 
-        gl_FragColor = color;
+        return color * vcolor;
     }
 ]]
 
 function Shaders.new()
-    local ok, shader = pcall(love.graphics.newShader, Shaders.vertexCode, Shaders.fragmentCode)
+    local ok, shader = pcall(love.graphics.newShader, Shaders.fragmentCode)
     if not ok then
         -- Fallback if shader fails
         return nil

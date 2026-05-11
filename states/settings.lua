@@ -27,6 +27,7 @@ function Settings:draw()
         {label = "VOLUME", value = string.format("%.0f%%", self.settings.volume * 100), action = "volume"},
         {label = "CRT EFFECT", value = self.settings.crtEffect and "ON" or "OFF", action = "crt"},
         {label = "SCREEN SHAKE", value = self.settings.screenShake and "ON" or "OFF", action = "shake"},
+        {label = "FULLSCREEN", value = self.settings.fullscreen and "ON" or "OFF", action = "fullscreen"},
         {label = "BACK", value = "", action = "back"},
     }
 
@@ -71,12 +72,7 @@ function Settings:draw()
 end
 
 function Settings:keypressed(key)
-    local options = {
-        {action = "volume"},
-        {action = "crt"},
-        {action = "shake"},
-        {action = "back"},
-    }
+    local options = self:getOptions()
 
     if key == "up" or key == "w" then
         self.selected = ((self.selected - 2) % #options) + 1
@@ -94,28 +90,42 @@ function Settings:keypressed(key)
 end
 
 function Settings:adjustSetting(dir)
-    local action = {
-        "volume", "crt", "shake",
-    }[self.selected]
+    local actions = {"volume", "crt", "shake", "fullscreen"}
+    local action = actions[self.selected]
     if not action then return end
 
     if action == "volume" then
         self.settings.volume = math.max(0, math.min(1, self.settings.volume + dir * 0.1))
         Save.setSetting("volume", self.settings.volume)
         self.game.audio:setMasterVolume(self.settings.volume)
+        self.game.audio:setBgmVolume(self.settings.volume * 0.65)
     elseif action == "crt" then
         self.settings.crtEffect = not self.settings.crtEffect
         Save.setSetting("crtEffect", self.settings.crtEffect)
     elseif action == "shake" then
         self.settings.screenShake = not self.settings.screenShake
         Save.setSetting("screenShake", self.settings.screenShake)
+    elseif action == "fullscreen" then
+        self.settings.fullscreen = not self.settings.fullscreen
+        love.window.setFullscreen(self.settings.fullscreen, "desktop")
+        Save.setSetting("fullscreen", self.settings.fullscreen)
     end
 end
 
 function Settings:activateSetting()
-    if self.selected == #self.buttons then
+    if self.selected == #self:getOptions() then
         self.sm:pop()
     end
+end
+
+function Settings:getOptions()
+    return {
+        {action = "volume"},
+        {action = "crt"},
+        {action = "shake"},
+        {action = "fullscreen"},
+        {action = "back"},
+    }
 end
 
 return Settings

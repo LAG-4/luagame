@@ -9,7 +9,7 @@ function Ball.new(x, y, dx, dy)
         radius = Config.BALL_RADIUS,
         dx = dx or 300, dy = dy or Config.BALL_INITIAL_DY,
         active = false, alive = true,
-        ghostPasses = 0, trail = {},
+        ghostPasses = 0, trail = {}, particleTrail = {},
     }
 end
 
@@ -19,6 +19,7 @@ function Ball.reset(ball, paddleX, paddleY)
     ball.active = false
     ball.alive = true
     ball.trail = {}
+    ball.particleTrail = {}
 end
 
 function Ball.launch(ball)
@@ -31,6 +32,7 @@ function Ball.update(ball, dt)
     if not ball.active then return end
     table.insert(ball.trail, 1, {x = ball.x, y = ball.y})
     if #ball.trail > 10 then table.remove(ball.trail) end
+    Ball.enforceSpeedLimits(ball)
     ball.x = ball.x + ball.dx * dt
     ball.y = ball.y + ball.dy * dt
 end
@@ -56,6 +58,16 @@ end
 function Ball.enforceMinVerticalSpeed(ball)
     if math.abs(ball.dy) < Config.BALL_MIN_DY then
         ball.dy = (ball.dy >= 0 and 1 or -1) * Config.BALL_MIN_DY
+    end
+end
+
+function Ball.enforceSpeedLimits(ball)
+    Ball.enforceMinVerticalSpeed(ball)
+    local speed = math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy)
+    if speed > Config.BALL_MAX_SPEED then
+        local scale = Config.BALL_MAX_SPEED / speed
+        ball.dx = ball.dx * scale
+        ball.dy = ball.dy * scale
     end
 end
 

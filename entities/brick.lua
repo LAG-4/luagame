@@ -53,7 +53,9 @@ end
 
 function Brick.updateAll(bricks, dt)
     for _, b in ipairs(bricks) do
-        if b.hitFlash > 0 then b.hitFlash = math.max(0, b.hitFlash - dt * 6) end
+        if b.hitFlash and b.hitFlash > 0 then 
+            b.hitFlash = math.max(0, b.hitFlash - dt * 6) 
+        end
     end
 end
 
@@ -97,6 +99,34 @@ function Brick.draw(brick, font)
     -- Border (dark, subtle)
     love.graphics.setColor(c[1]*0.3, c[2]*0.3, c[3]*0.3, 0.8 * dim)
     love.graphics.rectangle("line", brick.x, brick.y, brick.width, brick.height, 3, 3)
+
+    -- Heavy industrial frame and bolts inspired by the reference block sheet.
+    love.graphics.setColor(0.02, 0.018, 0.016, 0.9)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", brick.x + 1, brick.y + 1, brick.width - 2, brick.height - 2, 3, 3)
+    love.graphics.setLineWidth(1)
+
+    local boltR = math.max(2, math.min(4, brick.height * 0.12))
+    local bx1, bx2 = brick.x + 8, brick.x + brick.width - 8
+    local by1, by2 = brick.y + 7, brick.y + brick.height - 7
+    love.graphics.setColor(0.02, 0.015, 0.012, 0.95)
+    love.graphics.circle("fill", bx1, by1, boltR)
+    love.graphics.circle("fill", bx2, by1, boltR)
+    love.graphics.circle("fill", bx1, by2, boltR)
+    love.graphics.circle("fill", bx2, by2, boltR)
+    love.graphics.setColor(0.55, 0.48, 0.40, 0.35 * dim)
+    love.graphics.circle("line", bx1, by1, boltR)
+    love.graphics.circle("line", bx2, by1, boltR)
+    love.graphics.circle("line", bx1, by2, boltR)
+    love.graphics.circle("line", bx2, by2, boltR)
+
+    love.graphics.setColor(0, 0, 0, 0.18)
+    local crackSeed = brick.colorIdx * 13 + brick.maxHp * 7
+    for i = 1, 3 do
+        local x1 = brick.x + ((crackSeed + i * 19) % 80) / 80 * brick.width
+        local y1 = brick.y + 6 + ((crackSeed + i * 11) % 20)
+        love.graphics.line(x1, y1, x1 + 12, y1 + ((i % 2 == 0) and -5 or 5))
+    end
 end
 
 return Brick

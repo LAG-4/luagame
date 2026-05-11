@@ -40,6 +40,11 @@ local sm
 function love.load()
     love.window.setTitle("Brainrot Arcade")
 
+    local settings = Save.getSettings()
+    if settings.fullscreen ~= false then
+        love.window.setFullscreen(true, "desktop")
+    end
+
     game.canvas = love.graphics.newCanvas(Config.GAME_WIDTH, Config.GAME_HEIGHT)
     game.canvas:setFilter("linear", "linear")
 
@@ -54,6 +59,8 @@ function love.load()
 
     -- Phase 4: Audio manager with BGM
     game.audio = Audio.new(game.sounds, "assets/Virus Arcade Panic (1).mp3")
+    game.audio:setMasterVolume(settings.volume or 0.8)
+    game.audio:setBgmVolume((settings.volume or 0.8) * 0.65)
     game.audio:playBgm()
 
     -- Paddle image
@@ -79,12 +86,6 @@ function love.load()
     -- CRT Shader
     game.shader = Shaders.new()
 
-    -- Load settings
-    local settings = Save.getSettings()
-    if settings.crtEffect ~= false then
-        -- Shader enabled by default
-    end
-
     sm = StateMachine.new({
         menu        = require("states.menu"),
         playing     = require("states.playing"),
@@ -109,7 +110,9 @@ end
 
 function love.keypressed(key)
     if key == "f11" then
-        love.window.setFullscreen(not love.window.getFullscreen(), "desktop")
+        local fullscreen = not love.window.getFullscreen()
+        love.window.setFullscreen(fullscreen, "desktop")
+        Save.setSetting("fullscreen", fullscreen)
         return
     end
     sm:keypressed(key)
@@ -134,7 +137,9 @@ function love.draw()
     love.graphics.setCanvas(game.canvas)
     love.graphics.clear(Config.COLOR_BG[1], Config.COLOR_BG[2], Config.COLOR_BG[3], 1)
     love.graphics.origin()
-    game.camera:applyShake()
+    if settings.screenShake ~= false then
+        game.camera:applyShake()
+    end
     sm:draw()
     game.camera:drawFlash(Config.GAME_WIDTH, Config.GAME_HEIGHT)
     love.graphics.setCanvas()
@@ -151,7 +156,7 @@ function love.draw()
     -- Apply CRT shader if enabled
     if settings.crtEffect and game.shader then
         game.shader:setBrainrot(game.brainrotLevel)
-        game.shader:sendResolution(Config.GAME_WIDTH, Config.GAME_HEIGHT)
+        game.shader:sendResolution(winW, winH)
         game.shader:sendTime(love.timer.getTime())
         game.shader:apply()
     end

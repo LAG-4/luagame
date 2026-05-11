@@ -68,7 +68,7 @@ function RunSummary:draw()
     love.graphics.printf("MODIFIERS USED:", panelX + 20, y, panelW - 40, "left")
     y = y + 25
 
-    local mods = self.game.modifiers:getList()
+    local mods = self.game.modifiers:getAll()
     if #mods == 0 then
         love.graphics.setColor(Config.COLOR_MUTED)
         love.graphics.printf("None", panelX + 30, y, panelW - 60, "left")

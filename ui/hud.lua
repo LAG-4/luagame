@@ -122,6 +122,7 @@ function HUD.draw(game, fonts)
     local playCenter = SW + (W - SW) / 2
     love.graphics.setFont(fonts.main)
     local stageText = "STAGE " .. game.stage
+    if game.isEndless then stageText = "∞ " .. stageText end
     local stw = fonts.main:getWidth(stageText) + 50
 
     drawPanel(playCenter - stw/2, 8, stw, 30, {Config.COLOR_ACCENT[1], Config.COLOR_ACCENT[2], Config.COLOR_ACCENT[3], 0.4})

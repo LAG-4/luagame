@@ -21,6 +21,18 @@ function Menu:draw()
     local W, H = Config.GAME_WIDTH, Config.GAME_HEIGHT
     love.graphics.setBackgroundColor(Config.COLOR_BG_DARK)
 
+    love.graphics.setColor(0.025, 0.022, 0.021, 1)
+    love.graphics.rectangle("fill", 0, 0, W, H)
+    for i = 0, 26 do
+        local x = i * 53
+        love.graphics.setColor(0.09, 0.085, 0.075, 0.13)
+        love.graphics.line(x, 0, x + 140, H)
+    end
+    love.graphics.setColor(0.45, 0.02, 0.015, 0.12)
+    love.graphics.circle("fill", W * 0.52, H * 0.38, 185)
+    love.graphics.setColor(0.02, 0.018, 0.016, 0.62)
+    love.graphics.rectangle("fill", 0, 0, W, H)
+
     -- Atmospheric bg text
     love.graphics.setFont(self.game.fonts.large)
     love.graphics.setColor(Config.COLOR_ACCENT[1], Config.COLOR_ACCENT[2], Config.COLOR_ACCENT[3], 0.03)
@@ -29,7 +41,7 @@ function Menu:draw()
     love.graphics.print("BRAINROT", 200, 500, 0.2, 1.8, 1.8)
 
     -- Left panel (title area)
-    love.graphics.setColor(Config.COLOR_PANEL)
+    love.graphics.setColor(Config.COLOR_PANEL[1], Config.COLOR_PANEL[2], Config.COLOR_PANEL[3], 0.78)
     love.graphics.rectangle("fill", 0, 0, 320, H)
     love.graphics.setColor(Config.COLOR_PANEL_BORDER)
     love.graphics.rectangle("fill", 318, 0, 2, H)
@@ -57,7 +69,7 @@ function Menu:draw()
     local hsEndless = Save.getHighScoreEndless()
     love.graphics.print("HIGH SCORE: " .. hs, 20, 200)
     love.graphics.print("HIGH SCORE (ENDLESS): " .. hsEndless, 20, 218)
-    love.graphics.print("v0.5 — Phase 6", 20, H - 25)
+    love.graphics.print("v0.7 - Vertical Slice", 20, H - 25)
 
     -- Center: Buttons
     local btnW, btnH = 320, 48

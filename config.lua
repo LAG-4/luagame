@@ -24,6 +24,7 @@ Config.BALL_RADIUS        = 9
 Config.BALL_INITIAL_DY    = -480
 Config.BALL_LAUNCH_SPREAD = 280
 Config.BALL_MIN_DY        = 130
+Config.BALL_MAX_SPEED     = 820
 Config.PADDLE_HIT_SPREAD  = 400
 
 -- Bricks (fit in play area: 200 to 1280)

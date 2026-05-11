@@ -1,13 +1,17 @@
 -- Stage-specific brick layouts — Phase 6
 local Config = require("config")
+local Brick  = require("entities.brick")
 local Layouts = {}
 
 local function brickPattern(rows, cols, builder)
     local result = {}
     for row = 1, rows do
         for col = 1, cols do
-            local b = builder(row, col, rows, cols)
-            if b then table.insert(result, b) end
+            local bData = builder(row, col, rows, cols)
+            if bData then
+                local b = Brick.new(bData.x, bData.y, bData.w, bData.h, bData.hp or 1, bData.colorIdx or 1)
+                table.insert(result, b)
+            end
         end
     end
     return result
@@ -17,10 +21,10 @@ local function pos(col, row)
     local cellW = (Config.GAME_WIDTH - Config.BRICK_MARGIN_LEFT - Config.BRICK_MARGIN_RIGHT) / Config.BRICK_COLS
     local cellH = Config.BRICK_HEIGHT
     return {
-        x = Config.BRICK_MARGIN_LEFT + (col - 1) * (cellW + Config.BRICK_GAP),
-        y = Config.BRICK_TOP_OFFSET + (row - 1) * (cellH + Config.BRICK_GAP),
+        x = Config.BRICK_MARGIN_LEFT + (col - 1) * cellW,
+        y = Config.BRICK_TOP_OFFSET + (row - 1) * Config.BRICK_HEIGHT,
         w = cellW - Config.BRICK_GAP,
-        h = cellH - Config.BRICK_GAP,
+        h = Config.BRICK_HEIGHT - Config.BRICK_GAP,
     }
 end
 
@@ -29,7 +33,7 @@ Layouts.patterns = {
     function()
         return brickPattern(4, 10, function(r, c)
             local p = pos(c, r)
-            return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, active = true}
+            return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, colorIdx = r}
         end)
     end,
 
@@ -38,7 +42,7 @@ Layouts.patterns = {
         return brickPattern(5, 10, function(r, c)
             if (r + c) % 2 == 0 then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, active = true}
+                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, colorIdx = r}
             end
         end)
     end,
@@ -50,7 +54,7 @@ Layouts.patterns = {
             local right = 5 + math.ceil(r / 2)
             if c >= left and c <= right then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, active = true}
+                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, colorIdx = r}
             end
         end)
     end,
@@ -60,7 +64,7 @@ Layouts.patterns = {
         return brickPattern(6, 10, function(r, c)
             if r == 1 or r == 6 or c == 1 or c == 10 then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, active = true}
+                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, colorIdx = r}
             end
         end)
     end,
@@ -73,7 +77,7 @@ Layouts.patterns = {
             local dc = math.abs(c - midC)
             if dr + dc <= 5 then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, active = true}
+                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, colorIdx = r}
             end
         end)
     end,
@@ -83,7 +87,7 @@ Layouts.patterns = {
         return brickPattern(6, 10, function(r, c)
             if c % 3 ~= 0 then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = (r > 4) and 2 or 1, active = true}
+                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = (r > 4) and 2 or 1, colorIdx = r}
             end
         end)
     end,
@@ -94,7 +98,7 @@ Layouts.patterns = {
             local dist = math.min(r - 1, 8 - r, c - 1, 11 - c)
             if dist <= 2 then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = dist + 1, active = true}
+                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = dist + 1, colorIdx = r}
             end
         end)
     end,
@@ -106,7 +110,7 @@ Layouts.patterns = {
             local dc = math.abs(c - 5.5)
             if math.abs(dr - dc) < 1.5 then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = (dr < 1) and 2 or 1, active = true}
+                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = (dr < 1) and 2 or 1, colorIdx = r}
             end
         end)
     end,
@@ -118,7 +122,7 @@ Layouts.patterns = {
             local isTop = (r == 1)
             if isWall or isTop then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = isWall and 2 or 1, active = true}
+                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = isWall and 2 or 1, colorIdx = r}
             end
         end)
     end,
@@ -128,22 +132,9 @@ Layouts.patterns = {
         return brickPattern(7, 10, function(r, c)
             local p = pos(c, r)
             local isSkull = false
-
-            -- Skull outline
             local inBounds = (r >= 2 and r <= 7 and c >= 2 and c <= 9)
-
-            -- Eyes
-            if (r == 4 or r == 5) and (c == 3 or c == 8) then isSkull = false
-            -- Skull shape
-            elseif r == 2 and c >= 3 and c <= 8 then isSkull = true
-            elseif r == 3 and (c == 2 or c == 9) then isSkull = true
-            elseif r >= 4 and r <= 6 and (c == 2 or c == 9) then isSkull = true
-            elseif r == 7 and c >= 2 and c <= 9 then isSkull = true
-            else isSkull = false
-            end
-
             if inBounds then
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = (r <= 3) and 2 or 1, active = true}
+                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = (r <= 3) and 2 or 1, colorIdx = r}
             end
         end)
     end,
