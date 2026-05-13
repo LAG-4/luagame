@@ -65,31 +65,31 @@ Config.BRICK_COLORS = {
 }
 
 -- Reference-accurate UI palette
-Config.COLOR_BG           = {0.04, 0.035, 0.03}   -- near black background
-Config.COLOR_BG_DARK      = {0.03, 0.025, 0.02}   -- deepest black
-Config.COLOR_PANEL        = {0.06, 0.055, 0.05, 0.92}  -- dark panel
-Config.COLOR_PANEL_BORDER = {0.28, 0.22, 0.15, 0.55}   -- bronze border
-Config.COLOR_HUD_BG       = {0.05, 0.045, 0.04, 0.95}
-Config.COLOR_HUD_TEXT     = {0.82, 0.77, 0.68}    -- aged parchment
-Config.COLOR_ACCENT       = {0.82, 0.12, 0.08}    -- bright blood red
-Config.COLOR_ACCENT2      = {0.88, 0.52, 0.12}    -- bronze/gold
-Config.COLOR_SCORE        = {0.85, 0.22, 0.18}    -- score red
-Config.COLOR_COMBO        = {0.92, 0.48, 0.08}    -- combo fire orange
-Config.COLOR_GOLD         = {0.78, 0.58, 0.15}    -- antique gold
-Config.COLOR_CREAM        = {0.80, 0.74, 0.64}    -- aged cream
-Config.COLOR_CARD_BG      = {0.08, 0.07, 0.06}
-Config.COLOR_CARD_BORDER  = {0.32, 0.20, 0.12}
-Config.COLOR_LIVES        = {0.82, 0.18, 0.18}
-Config.COLOR_BALL         = {0.90, 0.80, 0.55}    -- warm gold ball
-Config.COLOR_BALL_GLOW    = {0.90, 0.50, 0.15, 0.12}
-Config.COLOR_PADDLE       = {0.55, 0.35, 0.20}    -- bronze paddle
-Config.COLOR_MUTED        = {0.42, 0.37, 0.32}    -- muted text
+Config.COLOR_BG           = {0.05, 0.04, 0.03}   -- deep dungeon darkness
+Config.COLOR_BG_DARK      = {0.02, 0.01, 0.01}  -- pitch black
+Config.COLOR_PANEL        = {0.12, 0.10, 0.09, 0.95}  -- obsidian/stone
+Config.COLOR_PANEL_BORDER = {0.45, 0.35, 0.20, 1}   -- antique gold
+Config.COLOR_HUD_BG       = {0.08, 0.07, 0.06, 1} -- carved stone pillar
+Config.COLOR_HUD_TEXT     = {0.90, 0.85, 0.75}    -- parchment/bone
+Config.COLOR_ACCENT       = {0.75, 0.10, 0.10}    -- diablo blood crimson
+Config.COLOR_ACCENT2      = {0.80, 0.60, 0.25}    -- bright gold
+Config.COLOR_SCORE        = {0.90, 0.85, 0.75}    -- bone white for text
+Config.COLOR_COMBO        = {0.95, 0.65, 0.15}    -- warm fire
+Config.COLOR_GOLD         = {0.80, 0.60, 0.25}    -- pure gold
+Config.COLOR_CREAM        = {0.85, 0.80, 0.70}    -- aged cream
+Config.COLOR_CARD_BG      = {0.10, 0.08, 0.07}
+Config.COLOR_CARD_BORDER  = {0.45, 0.35, 0.20}
+Config.COLOR_LIVES        = {0.75, 0.10, 0.10}
+Config.COLOR_BALL         = {0.80, 0.75, 0.85}    -- ghostly orb
+Config.COLOR_BALL_GLOW    = {0.50, 0.10, 0.80, 0.3}
+Config.COLOR_PADDLE       = {0.45, 0.35, 0.20}    -- brass/gold paddle
+Config.COLOR_MUTED        = {0.50, 0.45, 0.40}    -- carved text
 
 -- Reference-specific accent colors
-Config.COLOR_RED_BRIGHT   = {0.88, 0.08, 0.05}
-Config.COLOR_ORANGE_BRIGHT = {0.95, 0.44, 0.06}
-Config.COLOR_GREEN_BRIGHT = {0.30, 0.86, 0.02}
-Config.COLOR_PURPLE_BRIGHT = {0.55, 0.18, 1.00}
+Config.COLOR_RED_BRIGHT   = {0.75, 0.10, 0.10}
+Config.COLOR_ORANGE_BRIGHT = {0.85, 0.45, 0.15}
+Config.COLOR_GREEN_BRIGHT = {0.25, 0.65, 0.20} -- fell green
+Config.COLOR_PURPLE_BRIGHT = {0.45, 0.15, 0.70} -- dark magic purple
 
 -- Atmospheric background text (faded watermarks)
 Config.BG_TEXTS = {

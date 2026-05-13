@@ -66,66 +66,58 @@ function Brick.draw(brick, font)
     local dim = 0.55 + 0.45 * hpRatio
 
     -- Shadow
-    love.graphics.setColor(0, 0, 0, 0.5)
-    love.graphics.rectangle("fill", brick.x + 2, brick.y + 2,
-                            brick.width, brick.height, 3, 3)
+    love.graphics.setColor(0, 0, 0, 0.8)
+    love.graphics.rectangle("fill", brick.x + 4, brick.y + 4, brick.width, brick.height, 2, 2)
 
-    -- Dark grunge body
-    love.graphics.setColor(c[1]*dim*0.5, c[2]*dim*0.5, c[3]*dim*0.5)
-    love.graphics.rectangle("fill", brick.x, brick.y, brick.width, brick.height, 3, 3)
+    -- Base Stone
+    love.graphics.setColor(c[1]*dim*0.4, c[2]*dim*0.4, c[3]*dim*0.4)
+    love.graphics.rectangle("fill", brick.x, brick.y, brick.width, brick.height, 2, 2)
 
-    -- Lighter top half (worn metal look)
-    love.graphics.setColor(c[1]*dim*0.8, c[2]*dim*0.8, c[3]*dim*0.8)
-    love.graphics.rectangle("fill", brick.x, brick.y, brick.width, brick.height * 0.5, 3, 0)
+    -- Top/Left bevel (lighter)
+    love.graphics.setColor(c[1]*dim*0.6, c[2]*dim*0.6, c[3]*dim*0.6)
+    love.graphics.polygon("fill", brick.x, brick.y, brick.x + brick.width, brick.y, brick.x + brick.width - 4, brick.y + 4, brick.x + 4, brick.y + 4)
+    love.graphics.polygon("fill", brick.x, brick.y, brick.x + 4, brick.y + 4, brick.x + 4, brick.y + brick.height - 4, brick.x, brick.y + brick.height)
+
+    -- Bottom/Right bevel (darker)
+    love.graphics.setColor(c[1]*dim*0.2, c[2]*dim*0.2, c[3]*dim*0.2)
+    love.graphics.polygon("fill", brick.x, brick.y + brick.height, brick.x + brick.width, brick.y + brick.height, brick.x + brick.width - 4, brick.y + brick.height - 4, brick.x + 4, brick.y + brick.height - 4)
+    love.graphics.polygon("fill", brick.x + brick.width, brick.y, brick.x + brick.width - 4, brick.y + 4, brick.x + brick.width - 4, brick.y + brick.height - 4, brick.x + brick.width, brick.y + brick.height)
+
+    -- Inner dark area
+    love.graphics.setColor(0.04, 0.03, 0.02, 0.85)
+    love.graphics.rectangle("fill", brick.x + 4, brick.y + 4, brick.width - 8, brick.height - 8, 1, 1)
 
     -- Hit flash
     if brick.hitFlash > 0 then
         love.graphics.setColor(1, 0.8, 0.6, brick.hitFlash * 0.7)
-        love.graphics.rectangle("fill", brick.x, brick.y, brick.width, brick.height, 3, 3)
+        love.graphics.rectangle("fill", brick.x, brick.y, brick.width, brick.height, 2, 2)
     end
 
-    -- Meme name
+    -- Meme name with shadow (embossed look)
     if font and brick.width > 40 then
         love.graphics.setFont(font)
-        love.graphics.setColor(1, 1, 1, 0.75 * dim)
         local tw = font:getWidth(brick.name)
         local th = font:getHeight()
-        local sc = math.min(1, (brick.width - 8) / math.max(tw, 1))
-        love.graphics.print(brick.name,
-            brick.x + brick.width/2 - (tw*sc)/2,
-            brick.y + brick.height/2 - (th*sc)/2, 0, sc, sc)
+        local sc = math.min(1, (brick.width - 12) / math.max(tw, 1))
+        local tx = brick.x + brick.width/2 - (tw*sc)/2
+        local ty = brick.y + brick.height/2 - (th*sc)/2
+        
+        -- Text shadow
+        love.graphics.setColor(0, 0, 0, 0.9)
+        love.graphics.print(brick.name, tx + 2, ty + 2, 0, sc, sc)
+        -- Text color
+        love.graphics.setColor(Config.COLOR_CREAM[1], Config.COLOR_CREAM[2], Config.COLOR_CREAM[3], 0.85 * dim)
+        love.graphics.print(brick.name, tx, ty, 0, sc, sc)
     end
 
-    -- Border (dark, subtle)
-    love.graphics.setColor(c[1]*0.3, c[2]*0.3, c[3]*0.3, 0.8 * dim)
-    love.graphics.rectangle("line", brick.x, brick.y, brick.width, brick.height, 3, 3)
-
-    -- Heavy industrial frame and bolts inspired by the reference block sheet.
-    love.graphics.setColor(0.02, 0.018, 0.016, 0.9)
-    love.graphics.setLineWidth(2)
-    love.graphics.rectangle("line", brick.x + 1, brick.y + 1, brick.width - 2, brick.height - 2, 3, 3)
+    -- Scratches/Cracks
+    love.graphics.setColor(0, 0, 0, 0.5)
     love.graphics.setLineWidth(1)
-
-    local boltR = math.max(2, math.min(4, brick.height * 0.12))
-    local bx1, bx2 = brick.x + 8, brick.x + brick.width - 8
-    local by1, by2 = brick.y + 7, brick.y + brick.height - 7
-    love.graphics.setColor(0.02, 0.015, 0.012, 0.95)
-    love.graphics.circle("fill", bx1, by1, boltR)
-    love.graphics.circle("fill", bx2, by1, boltR)
-    love.graphics.circle("fill", bx1, by2, boltR)
-    love.graphics.circle("fill", bx2, by2, boltR)
-    love.graphics.setColor(0.55, 0.48, 0.40, 0.35 * dim)
-    love.graphics.circle("line", bx1, by1, boltR)
-    love.graphics.circle("line", bx2, by1, boltR)
-    love.graphics.circle("line", bx1, by2, boltR)
-    love.graphics.circle("line", bx2, by2, boltR)
-
-    love.graphics.setColor(0, 0, 0, 0.18)
     local crackSeed = brick.colorIdx * 13 + brick.maxHp * 7
-    for i = 1, 3 do
-        local x1 = brick.x + ((crackSeed + i * 19) % 80) / 80 * brick.width
-        local y1 = brick.y + 6 + ((crackSeed + i * 11) % 20)
-        love.graphics.line(x1, y1, x1 + 12, y1 + ((i % 2 == 0) and -5 or 5))
+    for i = 1, 2 + (brick.maxHp - brick.hp) do
+        local cx = brick.x + 6 + ((crackSeed + i * 29) % (brick.width - 12))
+        local cy = brick.y + 6 + ((crackSeed + i * 17) % (brick.height - 12))
+        love.graphics.line(cx, cy, cx + 5, cy + 5)
     end
 end
 

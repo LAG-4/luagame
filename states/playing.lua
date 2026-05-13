@@ -230,25 +230,36 @@ end
 function Playing:draw()
     local game = self.game
     local W, H = Config.GAME_WIDTH, Config.GAME_HEIGHT
-    love.graphics.setBackgroundColor(Config.COLOR_BG)
+    love.graphics.setBackgroundColor(Config.COLOR_BG_DARK)
 
-    love.graphics.setColor(0.025, 0.023, 0.022, 1)
+    local function drawImageCover(img, x, y, w, h, alpha)
+        if not img then return end
+        local iw, ih = img:getDimensions()
+        local scale = math.max(w / iw, h / ih)
+        love.graphics.setColor(1, 1, 1, alpha or 1)
+        love.graphics.draw(img, x + (w - iw * scale) / 2, y + (h - ih * scale) / 2, 0, scale, scale)
+    end
+
+    -- Dark textured background like menu
+    drawImageCover(game.images.background, 0, 0, W, H, 1)
+    love.graphics.setColor(0, 0, 0, 0.65)
     love.graphics.rectangle("fill", 0, 0, W, H)
-    love.graphics.setColor(0.08, 0.075, 0.068, 0.18)
-    for x = Config.PLAY_AREA_LEFT, W, 96 do
-        love.graphics.line(x, Config.TOP_BAR_HEIGHT, x + 80, H)
-    end
-    for y = Config.TOP_BAR_HEIGHT, H, 80 do
-        love.graphics.line(Config.PLAY_AREA_LEFT, y, W, y + 16)
-    end
-    love.graphics.setColor(0.4, 0.015, 0.01, 0.12)
-    love.graphics.circle("fill", (Config.PLAY_AREA_LEFT + W) / 2, H / 2 + 20, 150)
-    love.graphics.setColor(0, 0, 0, 0.35)
+    drawImageCover(game.images.scratchedMetal, 0, 0, W, H, 0.12)
+
+    -- Gothic subtle atmospheric texture (no more sci-fi grid)
+    love.graphics.setColor(0, 0, 0, 0.45)
+    love.graphics.rectangle("fill", Config.PLAY_AREA_LEFT, Config.TOP_BAR_HEIGHT, W - Config.PLAY_AREA_LEFT, H - Config.TOP_BAR_HEIGHT)
+    
+    -- Center atmospheric glow
+    love.graphics.setColor(0.15, 0.01, 0.01, 0.18)
+    love.graphics.circle("fill", (Config.PLAY_AREA_LEFT + W) / 2, H / 2, 200)
+    
+    love.graphics.setColor(0, 0, 0, 0.45)
     love.graphics.rectangle("fill", Config.PLAY_AREA_LEFT, Config.TOP_BAR_HEIGHT, W - Config.PLAY_AREA_LEFT, H - Config.TOP_BAR_HEIGHT)
 
     local bloodOverlay = game.images.bloodOverlay
     if bloodOverlay then
-        love.graphics.setColor(0.65, 0.04, 0.025, 0.11 + math.min(game.brainrotLevel, 8) * 0.012)
+        love.graphics.setColor(0.65, 0.04, 0.025, 0.14 + math.min(game.brainrotLevel, 8) * 0.012)
         love.graphics.draw(
             bloodOverlay,
             W - 500, Config.TOP_BAR_HEIGHT - 95,
@@ -256,7 +267,7 @@ function Playing:draw()
             560 / bloodOverlay:getWidth(),
             380 / bloodOverlay:getHeight()
         )
-        love.graphics.setColor(0.55, 0.025, 0.02, 0.06 + math.min(game.brainrotLevel, 8) * 0.008)
+        love.graphics.setColor(0.55, 0.025, 0.02, 0.08 + math.min(game.brainrotLevel, 8) * 0.008)
         love.graphics.draw(
             bloodOverlay,
             Config.PLAY_AREA_LEFT + 35, H - 225,
@@ -271,20 +282,13 @@ function Playing:draw()
         love.graphics.setFont(game.fonts.large)
         for _, t in ipairs(self.bgTexts) do
             local alpha = 0.03 + game.brainrotLevel * 0.005
-            love.graphics.setColor(Config.COLOR_ACCENT[1], Config.COLOR_ACCENT[2],
-                                   Config.COLOR_ACCENT[3], alpha)
+            love.graphics.setColor(Config.COLOR_RED_BRIGHT[1], Config.COLOR_RED_BRIGHT[2],
+                                   Config.COLOR_RED_BRIGHT[3], alpha)
             love.graphics.print(t.text, t.x, t.y, t.rot, t.scale, t.scale)
         end
     end
 
-    -- Subtle grid in play area
-    love.graphics.setColor(1, 1, 1, 0.008)
-    for x = Config.PLAY_AREA_LEFT, W, 60 do
-        love.graphics.line(x, Config.TOP_BAR_HEIGHT, x, H)
-    end
-    for y = Config.TOP_BAR_HEIGHT, H, 60 do
-        love.graphics.line(Config.PLAY_AREA_LEFT, y, W, y)
-    end
+    -- (Subtle grid removed for dark fantasy look)
 
     -- Bricks
     for _, brick in ipairs(game.bricks) do
@@ -316,17 +320,19 @@ function Playing:draw()
     end
     if hasInactive then
         local cx = (Config.PLAY_AREA_LEFT + W) / 2
-        love.graphics.setFont(game.fonts.large)
         local pulse = 0.5 + 0.5 * math.sin(love.timer.getTime() * 3)
-        love.graphics.setColor(Config.COLOR_CREAM[1], Config.COLOR_CREAM[2],
-                               Config.COLOR_CREAM[3], 0.6 + 0.3 * pulse)
-        love.graphics.printf("PRESS SPACE", Config.PLAY_AREA_LEFT, H/2 - 30,
-                             W - Config.PLAY_AREA_LEFT, "center")
+        
+        love.graphics.setFont(game.fonts.large)
+        love.graphics.setColor(0, 0, 0, 0.8)
+        love.graphics.printf("PRESS SPACE", Config.PLAY_AREA_LEFT + 2, H/2 - 28, W - Config.PLAY_AREA_LEFT, "center")
+        love.graphics.setColor(Config.COLOR_GOLD[1], Config.COLOR_GOLD[2], Config.COLOR_GOLD[3], 0.7 + 0.3 * pulse)
+        love.graphics.printf("PRESS SPACE", Config.PLAY_AREA_LEFT, H/2 - 30, W - Config.PLAY_AREA_LEFT, "center")
+        
         love.graphics.setFont(game.fonts.main)
-        love.graphics.setColor(Config.COLOR_ACCENT[1], Config.COLOR_ACCENT[2],
-                               Config.COLOR_ACCENT[3], 0.5 + 0.3 * pulse)
-        love.graphics.printf("TO LAUNCH", Config.PLAY_AREA_LEFT, H/2 + 5,
-                             W - Config.PLAY_AREA_LEFT, "center")
+        love.graphics.setColor(0, 0, 0, 0.8)
+        love.graphics.printf("TO DESCEND", Config.PLAY_AREA_LEFT + 2, H/2 + 7, W - Config.PLAY_AREA_LEFT, "center")
+        love.graphics.setColor(Config.COLOR_ACCENT[1], Config.COLOR_ACCENT[2], Config.COLOR_ACCENT[3], 0.6 + 0.4 * pulse)
+        love.graphics.printf("TO DESCEND", Config.PLAY_AREA_LEFT, H/2 + 5, W - Config.PLAY_AREA_LEFT, "center")
     end
 
     -- HUD last (sidebar + top bar drawn on top)
