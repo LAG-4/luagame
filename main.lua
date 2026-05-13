@@ -69,20 +69,25 @@ function love.load()
     )
     game.canvas:setFilter("linear", "linear")
 
-    local function tryFont(size)
-        local ok, f = pcall(love.graphics.newFont, "assets/font.ttf", math.floor(size * 1.5))
-        if ok then return f else return love.graphics.newFont(size) end
+    local function loadFont(path, size)
+        local ok, f = pcall(love.graphics.newFont, path, math.floor(size))
+        if ok then return f end
+        -- fallback to default
+        return love.graphics.newFont(math.floor(size))
     end
 
-    game.fonts.main  = tryFont(16)
-    game.fonts.small = tryFont(12)
-    game.fonts.large = tryFont(26)
-    game.fonts.menuTiny   = tryFont(12)
-    game.fonts.menuSmall  = tryFont(16)
-    game.fonts.menuLarge  = tryFont(22)
-    game.fonts.menuButton = tryFont(23)
-    game.fonts.menuArcade = tryFont(28)
-    game.fonts.menuIcon   = tryFont(20)
+    game.fonts.main       = loadFont("assets/fonts/Rajdhani-Regular.ttf", 18)
+    game.fonts.small      = loadFont("assets/fonts/ShareTechMono-Regular.ttf", 13)
+    game.fonts.large      = loadFont("assets/fonts/BlackOpsOne-Regular.ttf", 34)
+    game.fonts.menuTiny   = loadFont("assets/fonts/Rajdhani-Regular.ttf", 13)
+    game.fonts.menuSmall  = loadFont("assets/fonts/Rajdhani-SemiBold.ttf", 16)
+    game.fonts.menuLarge  = loadFont("assets/fonts/Rajdhani-Bold.ttf", 22)
+    game.fonts.menuButton = loadFont("assets/fonts/Rajdhani-Bold.ttf", 26)
+    game.fonts.menuArcade = loadFont("assets/fonts/PressStart2P-Regular.ttf", 20)
+    game.fonts.menuIcon   = loadFont("assets/fonts/ShareTechMono-Regular.ttf", 20)
+    game.fonts.title      = loadFont("assets/fonts/Creepster-Regular.ttf", 52)
+    game.fonts.stats      = loadFont("assets/fonts/ShareTechMono-Regular.ttf", 20)
+    game.fonts.pixel      = loadFont("assets/fonts/PressStart2P-Regular.ttf", 14)
 
     game.sounds.bonk  = love.audio.newSource("sounds/bonk.mp3", "static")
     game.sounds.punch = love.audio.newSource("sounds/punch.mp3", "static")

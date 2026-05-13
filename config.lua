@@ -52,38 +52,44 @@ Config.SHAKE_BRICK_DESTROY = 5
 Config.COMBO_DECAY_TIME     = 5.0  -- Seconds before combo starts decaying
 Config.COMBO_DECAY_RATE     = 1.0  -- Combo decreases by this per second after decay time
 
--- Dark gothic brick palette — worn grunge colors
+-- Dark gothic brick palette — reference-accurate grunge colors
 Config.BRICK_COLORS = {
-    {0.70, 0.15, 0.15},   -- blood red
-    {0.60, 0.18, 0.12},   -- dark crimson
-    {0.45, 0.30, 0.12},   -- rusted bronze
-    {0.55, 0.40, 0.10},   -- dark gold
-    {0.20, 0.45, 0.20},   -- sickly green
-    {0.30, 0.15, 0.45},   -- corrupted purple
-    {0.50, 0.25, 0.15},   -- burnt sienna
-    {0.15, 0.35, 0.35},   -- dark teal
+    {0.72, 0.14, 0.14},   -- blood red
+    {0.65, 0.15, 0.12},   -- dark crimson
+    {0.50, 0.32, 0.12},   -- rusted bronze
+    {0.58, 0.42, 0.10},   -- dark gold
+    {0.22, 0.48, 0.20},   -- sickly green
+    {0.32, 0.16, 0.48},   -- corrupted purple
+    {0.52, 0.26, 0.16},   -- burnt sienna
+    {0.16, 0.36, 0.36},   -- dark teal
 }
 
--- Dark gothic UI palette
-Config.COLOR_BG           = {0.06, 0.05, 0.05}   -- near black
-Config.COLOR_BG_DARK      = {0.04, 0.03, 0.03}   -- deepest black
-Config.COLOR_PANEL        = {0.09, 0.08, 0.07, 0.95}  -- dark panel
-Config.COLOR_PANEL_BORDER = {0.30, 0.18, 0.10, 0.6}   -- bronze border
-Config.COLOR_HUD_BG       = {0.07, 0.06, 0.05, 0.95}
-Config.COLOR_HUD_TEXT     = {0.80, 0.75, 0.65}    -- aged parchment
-Config.COLOR_ACCENT       = {0.75, 0.20, 0.15}    -- dark red accent
-Config.COLOR_ACCENT2      = {0.85, 0.55, 0.15}    -- bronze/gold
-Config.COLOR_SCORE        = {0.85, 0.25, 0.20}    -- score red
-Config.COLOR_COMBO        = {0.90, 0.55, 0.10}    -- combo fire orange
-Config.COLOR_GOLD         = {0.80, 0.60, 0.15}    -- antique gold
-Config.COLOR_CREAM        = {0.78, 0.72, 0.62}    -- aged cream
-Config.COLOR_CARD_BG      = {0.10, 0.08, 0.07}
-Config.COLOR_CARD_BORDER  = {0.35, 0.22, 0.12}
-Config.COLOR_LIVES        = {0.85, 0.20, 0.20}
+-- Reference-accurate UI palette
+Config.COLOR_BG           = {0.04, 0.035, 0.03}   -- near black background
+Config.COLOR_BG_DARK      = {0.03, 0.025, 0.02}   -- deepest black
+Config.COLOR_PANEL        = {0.06, 0.055, 0.05, 0.92}  -- dark panel
+Config.COLOR_PANEL_BORDER = {0.28, 0.22, 0.15, 0.55}   -- bronze border
+Config.COLOR_HUD_BG       = {0.05, 0.045, 0.04, 0.95}
+Config.COLOR_HUD_TEXT     = {0.82, 0.77, 0.68}    -- aged parchment
+Config.COLOR_ACCENT       = {0.82, 0.12, 0.08}    -- bright blood red
+Config.COLOR_ACCENT2      = {0.88, 0.52, 0.12}    -- bronze/gold
+Config.COLOR_SCORE        = {0.85, 0.22, 0.18}    -- score red
+Config.COLOR_COMBO        = {0.92, 0.48, 0.08}    -- combo fire orange
+Config.COLOR_GOLD         = {0.78, 0.58, 0.15}    -- antique gold
+Config.COLOR_CREAM        = {0.80, 0.74, 0.64}    -- aged cream
+Config.COLOR_CARD_BG      = {0.08, 0.07, 0.06}
+Config.COLOR_CARD_BORDER  = {0.32, 0.20, 0.12}
+Config.COLOR_LIVES        = {0.82, 0.18, 0.18}
 Config.COLOR_BALL         = {0.90, 0.80, 0.55}    -- warm gold ball
 Config.COLOR_BALL_GLOW    = {0.90, 0.50, 0.15, 0.12}
 Config.COLOR_PADDLE       = {0.55, 0.35, 0.20}    -- bronze paddle
-Config.COLOR_MUTED        = {0.40, 0.35, 0.30}    -- muted text
+Config.COLOR_MUTED        = {0.42, 0.37, 0.32}    -- muted text
+
+-- Reference-specific accent colors
+Config.COLOR_RED_BRIGHT   = {0.88, 0.08, 0.05}
+Config.COLOR_ORANGE_BRIGHT = {0.95, 0.44, 0.06}
+Config.COLOR_GREEN_BRIGHT = {0.30, 0.86, 0.02}
+Config.COLOR_PURPLE_BRIGHT = {0.55, 0.18, 1.00}
 
 -- Atmospheric background text (faded watermarks)
 Config.BG_TEXTS = {
