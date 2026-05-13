@@ -6,7 +6,7 @@ Brick.MEME_NAMES = {
     "SKIBIDI", "RIZZ GOD", "OHIO", "FANUM TAX", "GYATT",
     "SUS", "NO CAP", "BASED", "MID", "CRINGE",
     "MEWING", "NPC", "DELULU", "SIGMA", "W EDIT",
-    "FAX", "VALID", "COPE", "L BOZO", "SLAY",
+    "FAX", "TUNG TUNG TUNG SAHUR", "COPE", "L BOZO", "SLAY",
     "OP", "GOATED", "BUSSIN", "YEET", "RATIO",
 }
 

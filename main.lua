@@ -32,6 +32,8 @@ local game = {
     fonts          = {},
     sounds         = {},
     images         = {},
+    videos         = {},
+    mediaMappings  = {},
     canvas         = nil,
 }
 
@@ -134,6 +136,19 @@ function love.load()
     love.graphics.clear(1, 1, 1, 1)
     love.graphics.setCanvas()
     game.images.white = whiteCanvas
+
+    -- Media triggers (Meme sounds and videos)
+    local sahurSoundOk, sahurSound = pcall(love.audio.newSource, "assets/tung-tung-tung-tung-sahur.mp3", "static")
+    if sahurSoundOk then
+        game.sounds.sahur = sahurSound
+        game.mediaMappings["TUNG TUNG TUNG SAHUR"] = { type = "audio", src = game.sounds.sahur }
+    end
+
+    local skibidiVideoOk, skibidiVideo = pcall(love.graphics.newVideo, "assets/skibidi bop yes yes yes yes (original video).ogv")
+    if skibidiVideoOk then
+        game.videos.skibidi = skibidiVideo
+        game.mediaMappings["SKIBIDI"] = { type = "video", src = game.videos.skibidi }
+    end
 
     -- CRT Shader
     game.shader = Shaders.new()

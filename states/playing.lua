@@ -42,6 +42,8 @@ function Playing:enter(game, sm, freshStart, options)
             scale = 1.5 + math.random() * 1.5,
         })
     end
+    
+    self.activeVideos = {}
 end
 
 function Playing:update(dt)
@@ -60,6 +62,14 @@ function Playing:update(dt)
             if game.combo == 0 then
                 game.popups:banner("COMBO LOST", Config.COLOR_MUTED, 1.0)
             end
+        end
+    end
+
+    -- Cleanup videos that finished playing
+    for i = #(self.activeVideos or {}), 1, -1 do
+        local vid = self.activeVideos[i]
+        if not vid:isPlaying() then
+            table.remove(self.activeVideos, i)
         end
     end
 
@@ -207,6 +217,28 @@ function Playing:damageBrick(brick)
 
     if brick.hp <= 0 then
         brick.active = false
+        
+        -- Media Trigger
+        local media = game.mediaMappings[brick.name]
+        if media then
+            if media.type == "audio" then
+                media.src:stop() -- restart if already playing
+                media.src:play()
+            elseif media.type == "video" then
+                media.src:rewind()
+                media.src:play()
+                
+                -- Check if not already in activeVideos
+                local alreadyActive = false
+                for _, v in ipairs(self.activeVideos) do
+                    if v == media.src then alreadyActive = true break end
+                end
+                if not alreadyActive then
+                    table.insert(self.activeVideos, media.src)
+                end
+            end
+        end
+
         local mult = 1
         if game.modifiers:has("scoreFrenzy") then mult = mult * 3 end
         if game.modifiers:has("speedDemon") then mult = mult * 2 end
@@ -333,6 +365,30 @@ function Playing:draw()
         love.graphics.printf("TO DESCEND", Config.PLAY_AREA_LEFT + 2, H/2 + 7, W - Config.PLAY_AREA_LEFT, "center")
         love.graphics.setColor(Config.COLOR_ACCENT[1], Config.COLOR_ACCENT[2], Config.COLOR_ACCENT[3], 0.6 + 0.4 * pulse)
         love.graphics.printf("TO DESCEND", Config.PLAY_AREA_LEFT, H/2 + 5, W - Config.PLAY_AREA_LEFT, "center")
+    end
+
+    -- Render active overlay videos
+    if self.activeVideos and #self.activeVideos > 0 then
+        local cx = (Config.PLAY_AREA_LEFT + W) / 2
+        local cy = H / 2
+        for _, vid in ipairs(self.activeVideos) do
+            local vw, vh = vid:getDimensions()
+            local vscale = math.min((W - Config.PLAY_AREA_LEFT - 100) / vw, (H - 100) / vh) * 0.9
+            local drawW, drawH = vw * vscale, vh * vscale
+            local dx = cx - drawW / 2
+            local dy = cy - drawH / 2
+            
+            -- Dark fantasy border shadow
+            love.graphics.setColor(0, 0, 0, 0.95)
+            love.graphics.rectangle("fill", dx - 8, dy - 8, drawW + 16, drawH + 16, 4, 4)
+            love.graphics.setColor(Config.COLOR_PANEL_BORDER)
+            love.graphics.setLineWidth(4)
+            love.graphics.rectangle("line", dx - 4, dy - 4, drawW + 8, drawH + 8, 4, 4)
+            love.graphics.setLineWidth(1)
+            
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.draw(vid, dx, dy, 0, vscale, vscale)
+        end
     end
 
     -- HUD last (sidebar + top bar drawn on top)
