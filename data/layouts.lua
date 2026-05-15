@@ -5,12 +5,16 @@ local Layouts = {}
 
 local function brickPattern(rows, cols, builder)
     local result = {}
+    local nc = 1
     for row = 1, rows do
         for col = 1, cols do
             local bData = builder(row, col, rows, cols)
             if bData then
-                local b = Brick.new(bData.x, bData.y, bData.w, bData.h, bData.hp or 1, bData.colorIdx or 1)
+                local tier = bData.tier or Brick.tierForRow(row, rows)
+                local colorIdx = tier == "red" and 1 or (tier == "yellow" and 2 or 3)
+                local b = Brick.new(bData.x, bData.y, bData.w, bData.h, bData.hp, bData.colorIdx or colorIdx, nc, tier)
                 table.insert(result, b)
+                nc = (nc % #Brick.MEME_NAMES) + 1
             end
         end
     end
@@ -33,7 +37,7 @@ Layouts.patterns = {
     function()
         return brickPattern(4, 10, function(r, c)
             local p = pos(c, r)
-            return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, colorIdx = r}
+            return {x = p.x, y = p.y, w = p.w, h = p.h}
         end)
     end,
 
@@ -42,7 +46,7 @@ Layouts.patterns = {
         return brickPattern(5, 10, function(r, c)
             if (r + c) % 2 == 0 then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, colorIdx = r}
+                return {x = p.x, y = p.y, w = p.w, h = p.h}
             end
         end)
     end,
@@ -54,7 +58,7 @@ Layouts.patterns = {
             local right = 5 + math.ceil(r / 2)
             if c >= left and c <= right then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, colorIdx = r}
+                return {x = p.x, y = p.y, w = p.w, h = p.h}
             end
         end)
     end,
@@ -64,7 +68,7 @@ Layouts.patterns = {
         return brickPattern(6, 10, function(r, c)
             if r == 1 or r == 6 or c == 1 or c == 10 then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, colorIdx = r}
+                return {x = p.x, y = p.y, w = p.w, h = p.h}
             end
         end)
     end,
@@ -77,7 +81,7 @@ Layouts.patterns = {
             local dc = math.abs(c - midC)
             if dr + dc <= 5 then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = 1, colorIdx = r}
+                return {x = p.x, y = p.y, w = p.w, h = p.h}
             end
         end)
     end,
@@ -87,7 +91,7 @@ Layouts.patterns = {
         return brickPattern(6, 10, function(r, c)
             if c % 3 ~= 0 then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = (r > 4) and 2 or 1, colorIdx = r}
+                return {x = p.x, y = p.y, w = p.w, h = p.h}
             end
         end)
     end,
@@ -98,7 +102,7 @@ Layouts.patterns = {
             local dist = math.min(r - 1, 8 - r, c - 1, 11 - c)
             if dist <= 2 then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = dist + 1, colorIdx = r}
+                return {x = p.x, y = p.y, w = p.w, h = p.h}
             end
         end)
     end,
@@ -110,7 +114,7 @@ Layouts.patterns = {
             local dc = math.abs(c - 5.5)
             if math.abs(dr - dc) < 1.5 then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = (dr < 1) and 2 or 1, colorIdx = r}
+                return {x = p.x, y = p.y, w = p.w, h = p.h}
             end
         end)
     end,
@@ -122,7 +126,7 @@ Layouts.patterns = {
             local isTop = (r == 1)
             if isWall or isTop then
                 local p = pos(c, r)
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = isWall and 2 or 1, colorIdx = r}
+                return {x = p.x, y = p.y, w = p.w, h = p.h}
             end
         end)
     end,
@@ -134,7 +138,7 @@ Layouts.patterns = {
             local isSkull = false
             local inBounds = (r >= 2 and r <= 7 and c >= 2 and c <= 9)
             if inBounds then
-                return {x = p.x, y = p.y, w = p.w, h = p.h, hp = (r <= 3) and 2 or 1, colorIdx = r}
+                return {x = p.x, y = p.y, w = p.w, h = p.h}
             end
         end)
     end,

@@ -10,6 +10,7 @@ local Popup        = require("ui.popup")
 local Particles   = require("effects.particles")
 local Shaders      = require("effects.shaders")
 local Audio        = require("systems.audio")
+local Distractions = require("systems.distractions")
 local Save         = require("lib.save")
 
 local game = {
@@ -34,6 +35,7 @@ local game = {
     images         = {},
     videos         = {},
     mediaMappings  = {},
+    distractions   = nil,
     canvas         = nil,
 }
 
@@ -78,23 +80,30 @@ function love.load()
         return love.graphics.newFont(math.floor(size))
     end
 
-    game.fonts.main       = loadFont("assets/fonts/Rajdhani-Regular.ttf", 18)
-    game.fonts.small      = loadFont("assets/fonts/ShareTechMono-Regular.ttf", 13)
-    game.fonts.large      = loadFont("assets/fonts/BlackOpsOne-Regular.ttf", 34)
-    game.fonts.menuTiny   = loadFont("assets/fonts/Rajdhani-Regular.ttf", 13)
-    game.fonts.menuSmall  = loadFont("assets/fonts/Rajdhani-SemiBold.ttf", 16)
-    game.fonts.menuLarge  = loadFont("assets/fonts/Rajdhani-Bold.ttf", 22)
-    game.fonts.menuButton = loadFont("assets/fonts/Rajdhani-Bold.ttf", 26)
-    game.fonts.menuArcade = loadFont("assets/fonts/PressStart2P-Regular.ttf", 20)
-    game.fonts.menuIcon   = loadFont("assets/fonts/ShareTechMono-Regular.ttf", 20)
-    game.fonts.title      = loadFont("assets/fonts/Creepster-Regular.ttf", 52)
-    game.fonts.stats      = loadFont("assets/fonts/ShareTechMono-Regular.ttf", 20)
-    game.fonts.pixel      = loadFont("assets/fonts/PressStart2P-Regular.ttf", 14)
+    game.fonts.main       = loadFont("assets/fonts/Anton-Regular.ttf", 18)
+    game.fonts.small      = loadFont("assets/fonts/Jersey10-Regular.ttf", 16)
+    game.fonts.large      = loadFont("assets/fonts/Bangers-Regular.ttf", 44)
+    game.fonts.menuTiny   = loadFont("assets/fonts/Jersey10-Regular.ttf", 16)
+    game.fonts.menuSmall  = loadFont("assets/fonts/Anton-Regular.ttf", 18)
+    game.fonts.menuLarge  = loadFont("assets/fonts/Bangers-Regular.ttf", 28)
+    game.fonts.menuButton = loadFont("assets/fonts/Bangers-Regular.ttf", 36)
+    game.fonts.menuArcade = loadFont("assets/fonts/Jersey10-Regular.ttf", 30)
+    game.fonts.menuIcon   = loadFont("assets/fonts/RubikGlitch-Regular.ttf", 28)
+    game.fonts.title      = loadFont("assets/fonts/RubikDirt-Regular.ttf", 58)
+    game.fonts.stats      = loadFont("assets/fonts/Jersey10-Regular.ttf", 24)
+    game.fonts.hudValue   = loadFont("assets/fonts/Jersey10-Regular.ttf", 26)
+    game.fonts.panelTitle = loadFont("assets/fonts/Anton-Regular.ttf", 18)
+    game.fonts.pixel      = loadFont("assets/fonts/Jersey10-Regular.ttf", 18)
+    game.fonts.glitch     = loadFont("assets/fonts/RubikGlitch-Regular.ttf", 34)
 
     game.sounds.bonk  = love.audio.newSource("sounds/bonk.mp3", "static")
     game.sounds.punch = love.audio.newSource("sounds/punch.mp3", "static")
     game.sounds.fah   = love.audio.newSource("sounds/fah.mp3", "static")
     game.sounds.fah:setVolume(0.5)
+    local vineBoomOk, vineBoom = pcall(love.audio.newSource, "sounds/vine-boom.mp3", "static")
+    if vineBoomOk then
+        game.sounds.vineBoom = vineBoom
+    end
 
     -- Phase 4: Audio manager with BGM
     game.audio = Audio.new(game.sounds, "assets/Virus Arcade Panic (1).mp3")
@@ -127,6 +136,7 @@ function love.load()
     game.images.glowingOverlays = loadImage("assets/glowing overlays.png")
     game.images.noThoughts      = loadImage("assets/no thoughts empty head.png")
     game.images.iPutThePro      = loadImage("assets/i put the pro.png")
+    game.images.mewing          = loadImage("assets/mewing.png")
     game.images.cornerTop       = loadImage("assets/metallic corner bracket top.png")
     game.images.cornerBottom    = loadImage("assets/metallic corner bracket bottom.png")
 
@@ -141,14 +151,59 @@ function love.load()
     local sahurSoundOk, sahurSound = pcall(love.audio.newSource, "assets/tung-tung-tung-tung-sahur.mp3", "static")
     if sahurSoundOk then
         game.sounds.sahur = sahurSound
-        game.mediaMappings["TUNG TUNG TUNG SAHUR"] = { type = "audio", src = game.sounds.sahur }
+        game.mediaMappings["green:TUNG TUNG TUNG SAHUR"] = {
+            type = "audio",
+            name = "tung-sahur",
+            soundName = "sahur",
+            volume = 0.95,
+            cooldown = 0.18,
+        }
+        game.mediaMappings["TUNG TUNG TUNG SAHUR"] = game.mediaMappings["green:TUNG TUNG TUNG SAHUR"]
     end
 
-    local skibidiVideoOk, skibidiVideo = pcall(love.graphics.newVideo, "assets/skibidi bop yes yes yes yes (original video).ogv")
+    local skibidiVideoOk, skibidiVideo = pcall(love.graphics.newVideo, "assets/skibidi bop yes yes yes yes (original video).ogv", {audio = true})
+    if not skibidiVideoOk then
+        skibidiVideoOk, skibidiVideo = pcall(love.graphics.newVideo, "assets/skibidi bop yes yes yes yes (original video).ogv", true)
+    end
+    if not skibidiVideoOk then
+        skibidiVideoOk, skibidiVideo = pcall(love.graphics.newVideo, "assets/skibidi bop yes yes yes yes (original video).ogv")
+    end
     if skibidiVideoOk then
         game.videos.skibidi = skibidiVideo
-        game.mediaMappings["SKIBIDI"] = { type = "video", src = game.videos.skibidi }
+        game.mediaMappings["SKIBIDI"] = {
+            type = "video",
+            name = "skibidi",
+            video = game.videos.skibidi,
+            duration = 2.4,
+            cooldown = 1.4,
+            volume = 0.95,
+            maxWidth = 380,
+            maxHeight = 255,
+        }
     end
+    if game.images.mewing and game.sounds.vineBoom then
+        game.mediaMappings["yellow:MEWING"] = {
+            type = "image",
+            name = "mewing-vine-boom",
+            image = game.images.mewing,
+            soundName = "vineBoom",
+            duration = 1.45,
+            cooldown = 0.35,
+            volume = 0.95,
+            maxWidth = 360,
+            maxHeight = 310,
+        }
+    end
+    if game.sounds.vineBoom then
+        game.mediaMappings["yellow:*"] = {
+            type = "audio",
+            name = "yellow-vine-boom",
+            soundName = "vineBoom",
+            volume = 0.85,
+            cooldown = 0.18,
+        }
+    end
+    game.distractions = Distractions.new(game)
 
     -- CRT Shader
     game.shader = Shaders.new()
@@ -172,6 +227,7 @@ function love.update(dt)
     game.camera:update(dt, Config.SHAKE_DECAY_SPEED)
     game.timers:update(dt)
     game.particles:update(dt)
+    if game.distractions then game.distractions:update(dt) end
     sm:update(dt)
 end
 

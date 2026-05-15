@@ -54,14 +54,9 @@ Config.COMBO_DECAY_RATE     = 1.0  -- Combo decreases by this per second after d
 
 -- Dark gothic brick palette — reference-accurate grunge colors
 Config.BRICK_COLORS = {
-    {0.72, 0.14, 0.14},   -- blood red
-    {0.65, 0.15, 0.12},   -- dark crimson
-    {0.50, 0.32, 0.12},   -- rusted bronze
-    {0.58, 0.42, 0.10},   -- dark gold
-    {0.22, 0.48, 0.20},   -- sickly green
-    {0.32, 0.16, 0.48},   -- corrupted purple
-    {0.52, 0.26, 0.16},   -- burnt sienna
-    {0.16, 0.36, 0.36},   -- dark teal
+    {0.64, 0.08, 0.06},   -- hard red
+    {0.66, 0.48, 0.12},   -- medium yellow
+    {0.16, 0.54, 0.18},   -- easy green
 }
 
 -- Reference-accurate UI palette

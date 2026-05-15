@@ -52,7 +52,9 @@ function Audio:play(name, opts)
     local volume = (opts.volume or 1.0) * self.masterVolume
 
     -- Add slight random variation for organic feel
-    pitch = pitch + (math.random() - 0.5) * 0.08
+    local variance = opts.pitchVariance
+    if variance == nil then variance = 0.08 end
+    pitch = pitch + (math.random() - 0.5) * variance
     volume = math.min(1.0, volume)
 
     clone:setPitch(math.max(0.5, math.min(2.0, pitch)))

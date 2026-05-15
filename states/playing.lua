@@ -8,6 +8,7 @@ local Collision = require("systems.collision")
 local Modifiers = require("systems.modifiers")
 local Brainrot  = require("effects.brainrot")
 local HUD       = require("ui.hud")
+local Theme     = require("ui.theme")
 
 local Playing = {}
 
@@ -31,19 +32,12 @@ function Playing:enter(game, sm, freshStart, options)
         game.balls  = { Ball.new() }
         game.bricks = Layouts.get(game.stage)
     end
-    -- Seed atmospheric text positions
-    self.bgTexts = {}
-    for i = 1, 6 do
-        table.insert(self.bgTexts, {
-            text = Config.BG_TEXTS[math.random(#Config.BG_TEXTS)],
-            x = Config.PLAY_AREA_LEFT + math.random(100, 800),
-            y = math.random(100, 600),
-            rot = (math.random() - 0.5) * 0.6,
-            scale = 1.5 + math.random() * 1.5,
-        })
-    end
-    
-    self.activeVideos = {}
+    -- Reference-like watermarks behind the playfield.
+    self.bgTexts = {
+        {text = "NO THOUGHTS", x = 420, y = 260, rot = -0.06, scale = 2.55},
+        {text = "HEAD EMPTY", x = 470, y = 470, rot = 0.05, scale = 2.25},
+        {text = "BRAINROT", x = 665, y = 165, rot = 0.05, scale = 1.75},
+    }
 end
 
 function Playing:update(dt)
@@ -52,7 +46,9 @@ function Playing:update(dt)
     local stepDt = dt / steps
 
     -- Update audio state
-    game.audio:updateState(game.brainrotLevel, game.combo)
+    if game.audio then
+        game.audio:updateState(game.brainrotLevel, game.combo)
+    end
 
     -- Combo decay
     if game.combo > 0 then
@@ -62,14 +58,6 @@ function Playing:update(dt)
             if game.combo == 0 then
                 game.popups:banner("COMBO LOST", Config.COLOR_MUTED, 1.0)
             end
-        end
-    end
-
-    -- Cleanup videos that finished playing
-    for i = #(self.activeVideos or {}), 1, -1 do
-        local vid = self.activeVideos[i]
-        if not vid:isPlaying() then
-            table.remove(self.activeVideos, i)
         end
     end
 
@@ -218,25 +206,13 @@ function Playing:damageBrick(brick)
     if brick.hp <= 0 then
         brick.active = false
         
-        -- Media Trigger
-        local media = game.mediaMappings[brick.name]
-        if media then
-            if media.type == "audio" then
-                media.src:stop() -- restart if already playing
-                media.src:play()
-            elseif media.type == "video" then
-                media.src:rewind()
-                media.src:play()
-                
-                -- Check if not already in activeVideos
-                local alreadyActive = false
-                for _, v in ipairs(self.activeVideos) do
-                    if v == media.src then alreadyActive = true break end
-                end
-                if not alreadyActive then
-                    table.insert(self.activeVideos, media.src)
-                end
-            end
+        -- Media Trigger: check tier:name → plain name → tier:* fallback
+        local tier = brick.tier or "green"
+        local media = game.mediaMappings[tier .. ":" .. brick.name]
+                   or game.mediaMappings[brick.name]
+                   or game.mediaMappings[tier .. ":*"]
+        if media and game.distractions then
+            game.distractions:trigger(media)
         end
 
         local mult = 1
@@ -264,29 +240,21 @@ function Playing:draw()
     local W, H = Config.GAME_WIDTH, Config.GAME_HEIGHT
     love.graphics.setBackgroundColor(Config.COLOR_BG_DARK)
 
-    local function drawImageCover(img, x, y, w, h, alpha)
-        if not img then return end
-        local iw, ih = img:getDimensions()
-        local scale = math.max(w / iw, h / ih)
-        love.graphics.setColor(1, 1, 1, alpha or 1)
-        love.graphics.draw(img, x + (w - iw * scale) / 2, y + (h - ih * scale) / 2, 0, scale, scale)
-    end
-
-    -- Dark textured background like menu
-    drawImageCover(game.images.background, 0, 0, W, H, 1)
-    love.graphics.setColor(0, 0, 0, 0.65)
-    love.graphics.rectangle("fill", 0, 0, W, H)
-    drawImageCover(game.images.scratchedMetal, 0, 0, W, H, 0.12)
+    Theme.background(game, 0.70)
 
     -- Gothic subtle atmospheric texture (no more sci-fi grid)
-    love.graphics.setColor(0, 0, 0, 0.45)
+    love.graphics.setColor(0, 0, 0, 0.36)
     love.graphics.rectangle("fill", Config.PLAY_AREA_LEFT, Config.TOP_BAR_HEIGHT, W - Config.PLAY_AREA_LEFT, H - Config.TOP_BAR_HEIGHT)
     
     -- Center atmospheric glow
-    love.graphics.setColor(0.15, 0.01, 0.01, 0.18)
-    love.graphics.circle("fill", (Config.PLAY_AREA_LEFT + W) / 2, H / 2, 200)
+    love.graphics.setBlendMode("add")
+    love.graphics.setColor(0.18, 0.035, 0.015, 0.13)
+    love.graphics.circle("fill", (Config.PLAY_AREA_LEFT + W) / 2, H / 2, 230)
+    love.graphics.setColor(0.03, 0.20, 0.05, 0.05)
+    love.graphics.circle("fill", (Config.PLAY_AREA_LEFT + W) / 2, H / 2 + 34, 160)
+    love.graphics.setBlendMode("alpha")
     
-    love.graphics.setColor(0, 0, 0, 0.45)
+    love.graphics.setColor(0, 0, 0, 0.34)
     love.graphics.rectangle("fill", Config.PLAY_AREA_LEFT, Config.TOP_BAR_HEIGHT, W - Config.PLAY_AREA_LEFT, H - Config.TOP_BAR_HEIGHT)
 
     local bloodOverlay = game.images.bloodOverlay
@@ -313,7 +281,7 @@ function Playing:draw()
     if self.bgTexts then
         love.graphics.setFont(game.fonts.large)
         for _, t in ipairs(self.bgTexts) do
-            local alpha = 0.03 + game.brainrotLevel * 0.005
+            local alpha = 0.028 + game.brainrotLevel * 0.004
             love.graphics.setColor(Config.COLOR_RED_BRIGHT[1], Config.COLOR_RED_BRIGHT[2],
                                    Config.COLOR_RED_BRIGHT[3], alpha)
             love.graphics.print(t.text, t.x, t.y, t.rot, t.scale, t.scale)
@@ -354,42 +322,12 @@ function Playing:draw()
         local cx = (Config.PLAY_AREA_LEFT + W) / 2
         local pulse = 0.5 + 0.5 * math.sin(love.timer.getTime() * 3)
         
-        love.graphics.setFont(game.fonts.large)
-        love.graphics.setColor(0, 0, 0, 0.8)
-        love.graphics.printf("PRESS SPACE", Config.PLAY_AREA_LEFT + 2, H/2 - 28, W - Config.PLAY_AREA_LEFT, "center")
-        love.graphics.setColor(Config.COLOR_GOLD[1], Config.COLOR_GOLD[2], Config.COLOR_GOLD[3], 0.7 + 0.3 * pulse)
-        love.graphics.printf("PRESS SPACE", Config.PLAY_AREA_LEFT, H/2 - 30, W - Config.PLAY_AREA_LEFT, "center")
-        
-        love.graphics.setFont(game.fonts.main)
-        love.graphics.setColor(0, 0, 0, 0.8)
-        love.graphics.printf("TO DESCEND", Config.PLAY_AREA_LEFT + 2, H/2 + 7, W - Config.PLAY_AREA_LEFT, "center")
-        love.graphics.setColor(Config.COLOR_ACCENT[1], Config.COLOR_ACCENT[2], Config.COLOR_ACCENT[3], 0.6 + 0.4 * pulse)
-        love.graphics.printf("TO DESCEND", Config.PLAY_AREA_LEFT, H/2 + 5, W - Config.PLAY_AREA_LEFT, "center")
+        local promptW = W - Config.PLAY_AREA_LEFT
+        Theme.text(game.fonts.large, "PRESS SPACE", Config.PLAY_AREA_LEFT, H/2 - 30, promptW, "center", Config.COLOR_GOLD, 0.72 + 0.28 * pulse)
+        Theme.text(game.fonts.main, "TO DESCEND", Config.PLAY_AREA_LEFT, H/2 + 8, promptW, "center", Config.COLOR_ACCENT, 0.65 + 0.30 * pulse)
     end
 
-    -- Render active overlay videos
-    if self.activeVideos and #self.activeVideos > 0 then
-        local cx = (Config.PLAY_AREA_LEFT + W) / 2
-        local cy = H / 2
-        for _, vid in ipairs(self.activeVideos) do
-            local vw, vh = vid:getDimensions()
-            local vscale = math.min((W - Config.PLAY_AREA_LEFT - 100) / vw, (H - 100) / vh) * 0.9
-            local drawW, drawH = vw * vscale, vh * vscale
-            local dx = cx - drawW / 2
-            local dy = cy - drawH / 2
-            
-            -- Dark fantasy border shadow
-            love.graphics.setColor(0, 0, 0, 0.95)
-            love.graphics.rectangle("fill", dx - 8, dy - 8, drawW + 16, drawH + 16, 4, 4)
-            love.graphics.setColor(Config.COLOR_PANEL_BORDER)
-            love.graphics.setLineWidth(4)
-            love.graphics.rectangle("line", dx - 4, dy - 4, drawW + 8, drawH + 8, 4, 4)
-            love.graphics.setLineWidth(1)
-            
-            love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.draw(vid, dx, dy, 0, vscale, vscale)
-        end
-    end
+    if game.distractions then game.distractions:draw() end
 
     -- HUD last (sidebar + top bar drawn on top)
     HUD.draw(game, game.fonts)

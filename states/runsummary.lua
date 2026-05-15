@@ -1,6 +1,6 @@
--- Run summary screen — shows stats after game over/victory
 local Config = require("config")
 local Save = require("lib.save")
+local Theme = require("ui.theme")
 local RunSummary = {}
 
 function RunSummary:enter(game, sm)
@@ -9,7 +9,6 @@ function RunSummary:enter(game, sm)
     self.time = 0
     self.selected = 1
 
-    -- Save high score
     if game.isEndless then
         Save.trySetHighScoreEndless(game.score)
     else
@@ -17,99 +16,52 @@ function RunSummary:enter(game, sm)
     end
 
     self.buttons = {
-        { label = "MAIN MENU", action = "menu" },
-        { label = "PLAY AGAIN", action = "play" },
+        {label = "MAIN MENU", action = "menu"},
+        {label = "RUN IT BACK", action = "play"},
     }
 end
 
 function RunSummary:update(dt) self.time = (self.time or 0) + dt end
 
 function RunSummary:draw()
+    local game = self.game
     local W, H = Config.GAME_WIDTH, Config.GAME_HEIGHT
-    love.graphics.setBackgroundColor(Config.COLOR_BG_DARK)
+    Theme.background(game, 0.62)
 
-    -- Title
-    love.graphics.setFont(self.game.fonts.large)
-    love.graphics.setColor(Config.COLOR_ACCENT)
-    love.graphics.printf("RUN SUMMARY", 0, 50, W, "center")
+    Theme.text(game.fonts.title, "RUN SUMMARY", 0, 54, W, "center", Theme.colors.gold)
+    local panelW, panelH = 520, 340
+    local panelX, panelY = W / 2 - panelW / 2, 138
+    Theme.panel(panelX, panelY, panelW, panelH, "TOME ENTRY", game.fonts, {redTop = true})
 
-    -- Stats panel
-    local panelX, panelY = W/2 - 200, 120
-    local panelW, panelH = 400, 320
+    Theme.statRow(game.fonts, "FINAL SCORE", math.floor(game.score), panelX + 70, panelY + 62, panelW - 140, Theme.colors.gold)
+    Theme.statRow(game.fonts, "STAGE REACHED", game.stage or 1, panelX + 70, panelY + 110, panelW - 140, Theme.colors.bone)
+    Theme.statRow(game.fonts, "CORRUPTION", game.brainrotLevel or 0, panelX + 70, panelY + 158, panelW - 140, Theme.colors.red)
+    Theme.statRow(game.fonts, "VITALITY", game.lives or 0, panelX + 70, panelY + 206, panelW - 140, Theme.colors.green)
 
-    love.graphics.setColor(Config.COLOR_PANEL)
-    love.graphics.rectangle("fill", panelX, panelY, panelW, panelH, 8, 8)
-    love.graphics.setColor(Config.COLOR_PANEL_BORDER)
-    love.graphics.rectangle("line", panelX, panelY, panelW, panelH, 8, 8)
+    local mods = game.modifiers:getUnique()
+    local modText = #mods == 0 and "NO RUNES EQUIPPED" or table.concat(mods, " + ")
+    Theme.text(game.fonts.menuTiny, modText, panelX + 42, panelY + 278, panelW - 84, "center", #mods == 0 and Theme.colors.muted or Theme.colors.bone, 0.82)
 
-    love.graphics.setFont(self.game.fonts.main)
-    local stats = {
-        {label = "FINAL SCORE", value = self.game.score},
-        {label = "STAGE REACHED", value = self.game.stage or 1},
-        {label = "BRAINROT LEVEL", value = self.game.brainrotLevel or 0},
-        {label = "LIVES REMAINING", value = self.game.lives or 0},
-    }
-
-    local y = panelY + 30
-    for _, stat in ipairs(stats) do
-        love.graphics.setColor(Config.COLOR_CREAM)
-        love.graphics.printf(stat.label, panelX + 20, y, 180, "left")
-        love.graphics.setColor(Config.COLOR_GOLD)
-        love.graphics.printf(tostring(stat.value), panelX + 220, y, 150, "right")
-        y = y + 40
-    end
-
-    -- Active modifiers
-    love.graphics.setColor(Config.COLOR_PANEL_BORDER)
-    love.graphics.rectangle("fill", panelX + 20, y, panelW - 40, 1)
-    y = y + 20
-
-    love.graphics.setColor(Config.COLOR_MUTED)
-    love.graphics.printf("MODIFIERS USED:", panelX + 20, y, panelW - 40, "left")
-    y = y + 25
-
-    local mods = self.game.modifiers:getAll()
-    if #mods == 0 then
-        love.graphics.setColor(Config.COLOR_MUTED)
-        love.graphics.printf("None", panelX + 30, y, panelW - 60, "left")
-    else
-        for i, mod in ipairs(mods) do
-            love.graphics.setColor(Config.COLOR_ACCENT)
-            love.graphics.printf(mod, panelX + 30, y + (i-1)*22, panelW - 60, "left")
-        end
-    end
-
-    -- Buttons
-    local btnW, btnH = 180, 44
-    local startX = W/2 - btnW - 10
-    local startY = panelY + panelH + 30
-
-    love.graphics.setFont(self.game.fonts.main)
+    local btnW, btnH = 220, 58
+    local startX = W / 2 - btnW - 16
+    local y = panelY + panelH + 34
     for i, btn in ipairs(self.buttons) do
-        local y = startY + (i-1)*(btnH+10)
-        local isSelected = (i == self.selected)
-
-        love.graphics.setColor(isSelected and Config.COLOR_ACCENT or Config.COLOR_CARD_BG)
-        love.graphics.rectangle("fill", startX + (i-1)*(btnW+20), y, btnW, btnH, 6, 6)
-        love.graphics.setColor(isSelected and Config.COLOR_ACCENT or Config.COLOR_PANEL_BORDER)
-        love.graphics.rectangle("line", startX + (i-1)*(btnW+20), y, btnW, btnH, 6, 6)
-
-        love.graphics.setColor(isSelected and Config.COLOR_CREAM or Config.COLOR_MUTED)
-        love.graphics.printf(btn.label, startX + (i-1)*(btnW+20) + 10, y + 14, btnW - 20, "center")
+        local x = startX + (i - 1) * (btnW + 32)
+        Theme.button(btn.label, x, y, btnW, btnH, self.selected == i, game.fonts)
     end
 end
 
 function RunSummary:keypressed(key)
-    if key == "up" or key == "w" then
+    if key == "left" or key == "a" or key == "up" or key == "w" then
         self.selected = ((self.selected - 2) % #self.buttons) + 1
-    elseif key == "down" or key == "s" then
+    elseif key == "right" or key == "d" or key == "down" or key == "s" then
         self.selected = (self.selected % #self.buttons) + 1
     elseif key == "return" or key == "space" then
         local action = self.buttons[self.selected].action
         if action == "menu" then
             self.sm:switch("menu", self.game, self.sm)
         elseif action == "play" then
-            self.sm:switch("playing", self.game, self.sm, {endless = self.game.isEndless})
+            self.sm:switch("playing", self.game, self.sm, true, {endless = self.game.isEndless})
         end
     end
 end

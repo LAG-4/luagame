@@ -1,7 +1,36 @@
--- Settings screen — Phase 6
+-- Settings screen styled to match the reference gothic panels.
 local Config = require("config")
 local Save = require("lib.save")
 local Settings = {}
+
+local function drawImageCover(img, x, y, w, h, alpha)
+    if not img then return end
+    local iw, ih = img:getDimensions()
+    local scale = math.max(w / iw, h / ih)
+    love.graphics.setColor(1, 1, 1, alpha or 1)
+    love.graphics.draw(img, x + (w - iw * scale) / 2, y + (h - ih * scale) / 2, 0, scale, scale)
+end
+
+local function drawPanel(x, y, w, h, title, fonts)
+    love.graphics.setColor(0, 0, 0, 0.7)
+    love.graphics.rectangle("fill", x + 4, y + 4, w, h, 2, 2)
+    love.graphics.setColor(Config.COLOR_PANEL)
+    love.graphics.rectangle("fill", x, y, w, h, 2, 2)
+    love.graphics.setColor(0.04, 0.03, 0.02, 0.86)
+    love.graphics.rectangle("fill", x + 8, y + 38, w - 16, h - 46, 2, 2)
+    love.graphics.setColor(Config.COLOR_PANEL_BORDER)
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", x, y, w, h, 2, 2)
+    love.graphics.setLineWidth(1)
+    love.graphics.setColor(Config.COLOR_PANEL_BORDER[1], Config.COLOR_PANEL_BORDER[2], Config.COLOR_PANEL_BORDER[3], 0.35)
+    love.graphics.line(x + 8, y + 32, x + w - 8, y + 32)
+
+    if title then
+        love.graphics.setFont(fonts.panelTitle or fonts.main)
+        love.graphics.setColor(Config.COLOR_GOLD)
+        love.graphics.printf(title, x, y + 9, w, "center")
+    end
+end
 
 function Settings:enter(game, sm)
     self.game = game
@@ -17,12 +46,11 @@ function Settings:draw()
     local W, H = Config.GAME_WIDTH, Config.GAME_HEIGHT
     love.graphics.setBackgroundColor(Config.COLOR_BG_DARK)
 
-    -- Title
-    love.graphics.setFont(self.game.fonts.large)
-    love.graphics.setColor(Config.COLOR_ACCENT)
-    love.graphics.printf("SETTINGS", 0, 60, W, "center")
+    drawImageCover(self.game.images and self.game.images.background, 0, 0, W, H, 0.55)
+    love.graphics.setColor(0, 0, 0, 0.74)
+    love.graphics.rectangle("fill", 0, 0, W, H)
+    drawImageCover(self.game.images and self.game.images.scratchedMetal, 0, 0, W, H, 0.18)
 
-    -- Options
     local options = {
         {label = "VOLUME", value = string.format("%.0f%%", self.settings.volume * 100), action = "volume"},
         {label = "CRT EFFECT", value = self.settings.crtEffect and "ON" or "OFF", action = "crt"},
@@ -31,44 +59,43 @@ function Settings:draw()
         {label = "BACK", value = "", action = "back"},
     }
 
-    local btnW, btnH = 300, 44
+    local panelW, panelH = 420, 360
+    local panelX, panelY = W / 2 - panelW / 2, H / 2 - panelH / 2
+    drawPanel(panelX, panelY, panelW, panelH, "SETTINGS", self.game.fonts)
+
+    local btnW, btnH = 332, 42
     local startX = W / 2 - btnW / 2
-    local startY = H / 2 - (#options * (btnH + 10)) / 2
+    local startY = panelY + 64
 
-    love.graphics.setFont(self.game.fonts.main)
-    local selIdx = 1
-
+    love.graphics.setFont(self.game.fonts.menuSmall or self.game.fonts.main)
     for i, opt in ipairs(options) do
         local y = startY + (i - 1) * (btnH + 10)
         local isSelected = (i == self.selected)
 
-        -- Button bg
         if isSelected then
-            love.graphics.setColor(Config.COLOR_ACCENT[1]*0.3, Config.COLOR_ACCENT[2]*0.3, Config.COLOR_ACCENT[3]*0.3, 0.9)
+            love.graphics.setColor(0.24, 0.045, 0.04, 0.96)
         else
-            love.graphics.setColor(Config.COLOR_CARD_BG)
+            love.graphics.setColor(0.075, 0.06, 0.05, 0.98)
         end
-        love.graphics.rectangle("fill", startX, y, btnW, btnH, 6, 6)
+        love.graphics.rectangle("fill", startX, y, btnW, btnH, 2, 2)
 
-        -- Border
         love.graphics.setColor(isSelected and Config.COLOR_ACCENT or Config.COLOR_PANEL_BORDER)
-        love.graphics.rectangle("line", startX, y, btnW, btnH, 6, 6)
+        love.graphics.setLineWidth(isSelected and 3 or 1)
+        love.graphics.rectangle("line", startX, y, btnW, btnH, 2, 2)
+        love.graphics.setLineWidth(1)
 
-        -- Label
         love.graphics.setColor(isSelected and Config.COLOR_CREAM or Config.COLOR_MUTED)
-        love.graphics.printf(opt.label, startX + 20, y + 12, 120, "left")
+        love.graphics.printf(opt.label, startX + 18, y + 11, 160, "left")
 
-        -- Value
         if opt.value ~= "" then
             love.graphics.setColor(isSelected and Config.COLOR_GOLD or Config.COLOR_MUTED)
-            love.graphics.printf(opt.value, startX + 140, y + 12, 100, "left")
+            love.graphics.printf(opt.value, startX + 185, y + 11, 120, "right")
         end
     end
 
-    -- Instructions
     love.graphics.setFont(self.game.fonts.small)
     love.graphics.setColor(Config.COLOR_MUTED)
-    love.graphics.printf("← → Change values | ENTER Select | ESC Back", 0, H - 40, W, "center")
+    love.graphics.printf("LEFT / RIGHT TO CHANGE   ENTER TO SELECT   ESC TO BACK", panelX, panelY + panelH - 36, panelW, "center")
 end
 
 function Settings:keypressed(key)
